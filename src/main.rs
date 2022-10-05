@@ -1,4 +1,4 @@
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap};
 
 use pcap::{Capture, Device, Address};
 use pnet::packet::{
@@ -7,8 +7,15 @@ use pnet::packet::{
     ipv4::{Ipv4Packet, self},
     udp::UdpPacket,
     tcp::TcpPacket,
-    Packet, arp::ArpPacket,
+    Packet, arp::ArpPacket, PacketSize,
 };
+
+
+struct TrafficDetail {
+    address: String,
+    port: String,
+    bytes: usize
+}
 
 fn main() {
     let devices = Device::list().expect("Cannot retrieve devices list");
@@ -47,12 +54,18 @@ fn main() {
 
 
     println!("Links: {:?}", capture.list_datalinks());
+    let mut traffic: HashMap<String, TrafficDetail> = HashMap::new();
 
     // get 10 packets
-    for _ in 0..10 {
+    let mut count = 0;
+    loop {
         let packet = capture.next().unwrap(); // handle errors
 
-        handle_packet(&packet, &device_addresses);
+        if handle_packet(&packet, &device_addresses, &mut traffic) == true {
+            count += 1;
+        }
+
+        if count == 10 { break; }
 
         // println!("Packet: {:02x?}", packet);
         // //print!("Dst addr: {}", format!("{:02x?}", &packet.unwrap().data[0..6]));
@@ -62,15 +75,21 @@ fn main() {
         // println!("Dst MAC: {}", &packet.unwrap().data[0..6].into_iter().map(|b| { format!("{:02x}", b) }));
     }
 
-    let stats = capture.stats().unwrap();
-    println!(
-        "Received: {}, dropped: {}, if_dropped: {}",
-        stats.received, stats.dropped, stats.if_dropped
-    );
+
+    println!("***************** TRAFFIC *********************");
+    for detail in traffic.iter() {
+        println!("Key: {}, Address: {}, Port: {}, Bytes: {}", detail.0, detail.1.address, detail.1.port, detail.1.bytes);
+    }
+
+    // let stats = capture.stats().unwrap();
+    // println!(
+    //     "Received: {}, dropped: {}, if_dropped: {}",
+    //     stats.received, stats.dropped, stats.if_dropped
+    // );
 }
 
 
-pub fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>) {
+fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>, traffic: &mut HashMap<String, TrafficDetail>) -> bool {
     let ethernet = EthernetPacket::new(packet.data).unwrap();
     let resolve_all_resource_records = true;
     let mut outgoing = true;
@@ -81,13 +100,10 @@ pub fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>) {
     let mut ipv6_addr = Ipv6Addr::UNSPECIFIED;
 
     for n in 0..addresses.len() {
-        println!("This is {} in vector: {:?}", n, addresses[n].addr);
+        // println!("This is {} in vector: {:?}", n, addresses[n].addr);
 
         match addresses[n].addr {
-            IpAddr::V4(ipv4) => {
-                print!("Assign ipv4: {:?}", ipv4);
-                ipv4_addr = ipv4;
-            },
+            IpAddr::V4(ipv4) => ipv4_addr = ipv4,
             IpAddr::V6(ipv6) => ipv6_addr = ipv6
         };
 
@@ -105,28 +121,40 @@ pub fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>) {
         // },
         EtherTypes::Ipv4 => {
             let address: String;
-            let port: String;
             let ipv4_packet = Ipv4Packet::new(ethernet.payload()).unwrap();
-            println!("ipv4 - Src: {}\t Dst: {}", ipv4_packet.get_source(), ipv4_packet.get_destination());
+            // println!("ipv4 - Src: {}\t Dst: {}", ipv4_packet.get_source(), ipv4_packet.get_destination());
 
             if ipv4_addr == ipv4_packet.get_destination() {
                 outgoing = false;
-                address = ipv4_packet.get_destination().to_string();
+                address = ipv4_packet.get_source().to_string();
             } else {
                 address = ipv4_packet.get_destination().to_string();
             }
 
-            print!("DEBUG_LOG - Ipv4Address: {:?}   -   ", ipv4_addr);
-            print!("DEBUG_LOG - Address: {}   -   ", address);
+            // print!("DEBUG_LOG - Ipv4Address: {:?}   -   ", ipv4_addr);
+            // print!("DEBUG_LOG - Address: {}   -   ", address);
 
             if let IpNextHeaderProtocols::Udp = ipv4_packet.get_next_level_protocol() {
                 let udp_packet = UdpPacket::new(ipv4_packet.payload()).unwrap();
-                let (rest, dns_message) = dnslogger::parse::dns_message(
-                    udp_packet.payload(),
-                    resolve_all_resource_records
-                ).unwrap();
-                println!("{:?}", dns_message);
-                println!("{:02x?}", rest);
+                // let (rest, dns_message) = dnslogger::parse::dns_message(
+                //     udp_packet.payload(),
+                //     resolve_all_resource_records
+                // ).unwrap();
+                // println!("{:?}", dns_message);
+                // println!("{:02x?}", rest);
+
+                // Populate statistics
+                let port = if outgoing == true { // mi interessa la mia porta, non quella dall'altra parte
+                    format!("{}", udp_packet.get_source())
+                } else { 
+                    format!("{}", udp_packet.get_destination()) 
+                };
+                let key = format!("{}:{}", address, port);
+
+                println!("UDP - {} - {}", key, usize::from(udp_packet.payload().len()));
+                traffic.entry(key).and_modify(|detail| detail.bytes += usize::from(udp_packet.payload().len())).or_insert( TrafficDetail {address: address.clone(), port: port, bytes: usize::from(udp_packet.payload().len())});
+
+                return true;
             }
 
             if let IpNextHeaderProtocols::Tcp = ipv4_packet.get_next_level_protocol() {
@@ -134,7 +162,17 @@ pub fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>) {
                 let src = format!("{}", tcp_packet.get_source());
                 let dst = format!("{}", tcp_packet.get_destination());
 
-                println!("TCP - Src: {}\t Dst: {}", src, dst);
+                let port = if outgoing == true { // mi interessa la mia porta, non quella dall'altra parte
+                    src
+                } else {
+                    dst
+                };
+
+                let key = format!("{}:{}", address, port);
+                println!("TCP - {} - {}", key, usize::from(tcp_packet.payload().len()));
+                traffic.entry(key).and_modify(|detail| detail.bytes += usize::from(tcp_packet.payload().len())).or_insert( TrafficDetail {address: address, port: port, bytes: usize::from(tcp_packet.payload().len())});
+
+                return true;
             }
             
             // if let IpNextHeaderProtocols::Tcp = ipv4_packet.get_next_level_protocol() {
@@ -144,6 +182,8 @@ pub fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>) {
         },
         _ => println!("unhandled packet: {:?}", ethernet)
     }
+
+    return false;
 }
 
 // use rayon;
