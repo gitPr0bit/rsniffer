@@ -1,5 +1,5 @@
 use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap};
-
+use crate::lib::report::TrafficDetail;
 use pcap::{Capture, Device, Address};
 use pnet::packet::{
     ethernet::{EtherTypes, EthernetPacket},
@@ -10,12 +10,13 @@ use pnet::packet::{
     Packet, arp::ArpPacket, PacketSize,
 };
 
+mod lib;
 
-struct TrafficDetail {
-    address: String,
-    port: String,
-    bytes: usize
-}
+// struct TrafficDetail {
+//     address: String,
+//     port: String,
+//     bytes: usize
+// }
 
 fn main() {
     let devices = Device::list().expect("Cannot retrieve devices list");
@@ -50,7 +51,7 @@ fn main() {
             Err(e) => panic!("Error activating capture: {:?}", e)
         },
         Err(e) => panic!("Error opening capture: {:?}", e)
-    };
+    }; 
 
 
     println!("Links: {:?}", capture.list_datalinks());
@@ -76,9 +77,11 @@ fn main() {
     }
 
 
-    println!("***************** TRAFFIC *********************");
+    println!("\n\n***************** TRAFFIC *********************");
     for detail in traffic.iter() {
-        println!("Key: {}, Address: {}, Port: {}, Bytes: {}", detail.0, detail.1.address, detail.1.port, detail.1.bytes);
+        println!("Key: {}, SRC_IP: {:>20}, DST_IP: {:>20}, SRC_PORT: {:>10}, DST_PORT: {:>10}, Bytes: {}", 
+            detail.0, detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.bytes);
+        print!("{:?}", detail);
     }
 
     // let stats = capture.stats().unwrap();
@@ -120,16 +123,18 @@ fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>, traffic: &mut 
         //     println!("arp - Src: {}\t Dst: {}", arp_packet.get_sender_hw_addr(), arp_packet.get_target_hw_addr());
         // },
         EtherTypes::Ipv4 => {
-            let address: String;
             let ipv4_packet = Ipv4Packet::new(ethernet.payload()).unwrap();
             // println!("ipv4 - Src: {}\t Dst: {}", ipv4_packet.get_source(), ipv4_packet.get_destination());
 
-            if ipv4_addr == ipv4_packet.get_destination() {
-                outgoing = false;
-                address = ipv4_packet.get_source().to_string();
-            } else {
-                address = ipv4_packet.get_destination().to_string();
-            }
+            // if ipv4_addr == ipv4_packet.get_destination() {
+            //     outgoing = false;
+            //     address = ipv4_packet.get_source().to_string();
+            // } else {
+            //     address = ipv4_packet.get_destination().to_string();
+            // }
+
+            let src_ip = ipv4_packet.get_source().to_string();
+            let dst_ip = ipv4_packet.get_destination().to_string();
 
             // print!("DEBUG_LOG - Ipv4Address: {:?}   -   ", ipv4_addr);
             // print!("DEBUG_LOG - Address: {}   -   ", address);
@@ -143,16 +148,22 @@ fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>, traffic: &mut 
                 // println!("{:?}", dns_message);
                 // println!("{:02x?}", rest);
 
-                // Populate statistics
-                let port = if outgoing == true { // mi interessa la mia porta, non quella dall'altra parte
-                    format!("{}", udp_packet.get_source())
-                } else { 
-                    format!("{}", udp_packet.get_destination()) 
-                };
-                let key = format!("{}:{}", address, port);
+                let src_port = udp_packet.get_source().to_string();
+                let dst_port = udp_packet.get_destination().to_string();
+
+                let key = format!("{}:{}:{}:{}", src_ip, dst_ip, src_port, dst_port);
 
                 println!("UDP - {} - {}", key, usize::from(udp_packet.payload().len()));
-                traffic.entry(key).and_modify(|detail| detail.bytes += usize::from(udp_packet.payload().len())).or_insert( TrafficDetail {address: address.clone(), port: port, bytes: usize::from(udp_packet.payload().len())});
+                traffic.entry(key)
+                    .and_modify(|detail| detail.bytes += usize::from(udp_packet.payload().len()))
+                    .or_insert( TrafficDetail {
+                        src_ip: src_ip,
+                        dst_ip: dst_ip,
+                        src_port: src_port,
+                        dst_port: dst_port,
+                        bytes: usize::from(udp_packet.payload().len())
+                    }
+                );
 
                 return true;
             }
@@ -168,9 +179,22 @@ fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>, traffic: &mut 
                     dst
                 };
 
-                let key = format!("{}:{}", address, port);
+                let src_port = tcp_packet.get_source().to_string();
+                let dst_port = tcp_packet.get_destination().to_string();
+
+                let key = format!("{}:{}:{}:{}", src_ip, dst_ip, src_port, dst_port);
+
                 println!("TCP - {} - {}", key, usize::from(tcp_packet.payload().len()));
-                traffic.entry(key).and_modify(|detail| detail.bytes += usize::from(tcp_packet.payload().len())).or_insert( TrafficDetail {address: address, port: port, bytes: usize::from(tcp_packet.payload().len())});
+                traffic.entry(key)
+                    .and_modify(|detail| detail.bytes += usize::from(tcp_packet.payload().len()))
+                    .or_insert( TrafficDetail {
+                        src_ip: src_ip,
+                        dst_ip: dst_ip,
+                        src_port: src_port,
+                        dst_port: dst_port,
+                        bytes: usize::from(tcp_packet.payload().len())
+                    }
+                );
 
                 return true;
             }
