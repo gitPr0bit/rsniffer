@@ -10,6 +10,18 @@ pub mod report {
         pub bytes: usize
     }
 
+    impl TrafficDetail {
+        pub fn new() -> Self {
+            Self {
+                src_ip: String::from(""),
+                dst_ip: String::from(""),
+                src_port: String::from(""),
+                dst_port: String::from(""),
+                bytes: 0
+            }
+        }
+    }
+
     struct TrafficReport {
         traffic: HashMap<String, TrafficDetail>
     }

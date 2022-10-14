@@ -1,5 +1,5 @@
 use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap};
-use crate::lib::report::TrafficDetail;
+use crate::lib::{report::report::TrafficDetail, parser::parser::*};
 use pcap::{Capture, Device, Address};
 use pnet::packet::{
     ethernet::{EtherTypes, EthernetPacket},
