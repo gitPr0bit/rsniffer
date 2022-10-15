@@ -5,7 +5,7 @@ pub mod parser {
         ipv4::{Ipv4Packet, self},
         udp::UdpPacket,
         tcp::TcpPacket,
-        Packet, arp::ArpPacket, PacketSize, ipv6::Ipv6Packet,
+        Packet, arp::ArpPacket, PacketSize, ipv6::Ipv6Packet, icmp::IcmpPacket, icmpv6::Icmpv6Packet,
     };
     
     use crate::lib::report::report::TrafficDetail;
@@ -29,9 +29,9 @@ pub mod parser {
                 res.dst_ip = ipv4_packet.get_destination().to_string();
 
                 match ipv4_packet.get_next_level_protocol() {
-                    IpNextHeaderProtocols::Udp => parse_udp(IpPacket::V4(&ipv4_packet), res),
-                    IpNextHeaderProtocols::Tcp => parse_tcp(IpPacket::V4(&ipv4_packet), res),
-                    _ => println!("unhandled packet: {:?}", ethernet)
+                    IpNextHeaderProtocols::Udp  => parse_udp(IpPacket::V4(&ipv4_packet), res),
+                    IpNextHeaderProtocols::Tcp  => parse_tcp(IpPacket::V4(&ipv4_packet), res),
+                    _ => res.handled = false
                 }
             },
             EtherTypes::Ipv6 => {
@@ -42,10 +42,10 @@ pub mod parser {
                 match ipv6_packet.get_next_header() {
                     IpNextHeaderProtocols::Udp => parse_udp(IpPacket::V6(&ipv6_packet), res),
                     IpNextHeaderProtocols::Tcp => parse_tcp(IpPacket::V6(&ipv6_packet), res),
-                    _ => println!("unhandled packet: {:?}", ethernet)
+                    _ => res.handled = false
                 }
             },
-            _ => println!("unhandled packet: {:?}", ethernet)
+            _ => res.handled = false
         }
     }
 
@@ -57,6 +57,7 @@ pub mod parser {
 
         res.src_port = udp_packet.get_source().to_string();
         res.dst_port = udp_packet.get_destination().to_string();
+        res.bytes = usize::from(udp_packet.payload().len());
     }
 
     fn parse_tcp(packet: IpPacket, res: &mut TrafficDetail) {
@@ -67,6 +68,7 @@ pub mod parser {
 
         res.src_port = tcp_packet.get_source().to_string();
         res.dst_port = tcp_packet.get_destination().to_string();
+        res.bytes = usize::from(tcp_packet.payload().len());
     }
 
 

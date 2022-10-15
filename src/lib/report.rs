@@ -7,18 +7,29 @@ pub mod report {
         pub dst_ip: String,
         pub src_port: String,
         pub dst_port: String,
-        pub bytes: usize
+        pub protocol: String,
+        pub bytes: usize,
+        pub npackets: usize,
+        pub handled: bool
     }
 
     impl TrafficDetail {
         pub fn new() -> Self {
             Self {
-                src_ip: String::from(""),
-                dst_ip: String::from(""),
-                src_port: String::from(""),
-                dst_port: String::from(""),
-                bytes: 0
+                src_ip: String::new(),
+                dst_ip: String::new(),
+                src_port: String::new(),
+                dst_port: String::new(),
+                protocol: String::new(),
+                bytes: 0,
+                npackets: 1,
+                handled: true
             }
+        }
+
+        pub fn key(&self) -> String {
+            
+            format!("{}:{}:{}:{}", self.src_ip, self.dst_ip, self.src_port, self.dst_port)
         }
     }
 
