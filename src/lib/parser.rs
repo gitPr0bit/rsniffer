@@ -58,6 +58,7 @@ pub mod parser {
         res.src_port = udp_packet.get_source().to_string();
         res.dst_port = udp_packet.get_destination().to_string();
         res.bytes = usize::from(udp_packet.payload().len());
+        res.protocol = String::from("UDP");
     }
 
     fn parse_tcp(packet: IpPacket, res: &mut TrafficDetail) {
@@ -69,6 +70,7 @@ pub mod parser {
         res.src_port = tcp_packet.get_source().to_string();
         res.dst_port = tcp_packet.get_destination().to_string();
         res.bytes = usize::from(tcp_packet.payload().len());
+        res.protocol = String::from("TCP");
     }
 
 

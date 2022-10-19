@@ -10,6 +10,9 @@ use pnet::packet::{
     Packet, arp::ArpPacket, PacketSize,
 };
 
+#[macro_use] extern crate prettytable;
+use prettytable::{Table, Row, format};
+
 mod lib;
 
 fn main() {
@@ -80,18 +83,23 @@ fn main() {
     }
 
 
-    println!("\n\n***************** TRAFFIC *********************");
-    println!("|{:^20}|{:^20}|{:^15}|{:^15}|{:^11}|{:^10}|", 
-        "SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT",
-        "TRANSPORT", "BYTES"
-    );
-    println!("{:_<100} ", " ");
+    let mut table = Table::new();
+    let format = format::FormatBuilder::new()
+        .column_separator('|')
+        .borders('|')
+        .separators(&[format::LinePosition::Top, format::LinePosition::Bottom, format::LinePosition::Title],
+                      format::LineSeparator::new('-', '+', '+', '+'))
+        .padding(1, 1)
+        .build();
+    table.set_format(format);
+    table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #"]);
 
     for detail in traffic.iter() {
-        println!("|{:^20}|{:^20}|{:^15}|{:^15}|{:^11}|{:^10}|", 
-            detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes);
+        table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes, detail.1.npackets]);
         // print!("{:?}", detail);
     }
+
+    table.printstd();
 
     // let stats = capture.stats().unwrap();
     // println!(
@@ -100,124 +108,6 @@ fn main() {
     // );
 }
 
-
-// fn handle_packet(packet: &pcap::Packet, addresses: &Vec<Address>, traffic: &mut HashMap<String, TrafficDetail>) -> bool {
-//     let ethernet = EthernetPacket::new(packet.data).unwrap();
-//     let resolve_all_resource_records = true;
-//     let mut outgoing = true;
-
-//     // *************************** move outside handle_packet *************************** //
-//     // get ip addr of current device
-//     let mut ipv4_addr = Ipv4Addr::UNSPECIFIED;
-//     let mut ipv6_addr = Ipv6Addr::UNSPECIFIED;
-
-//     for n in 0..addresses.len() {
-//         // println!("This is {} in vector: {:?}", n, addresses[n].addr);
-
-//         match addresses[n].addr {
-//             IpAddr::V4(ipv4) => ipv4_addr = ipv4,
-//             IpAddr::V6(ipv6) => ipv6_addr = ipv6
-//         };
-
-//         if ipv4_addr != Ipv4Addr::UNSPECIFIED && ipv6_addr != Ipv6Addr::UNSPECIFIED {
-//             break;
-//         }
-//     };
-//     // *********************************************************************************** //
-
-//     match ethernet.get_ethertype() {
-//         // Is distinction of Arp traffic meaningful?
-//         // EtherTypes::Arp => {
-//         //     let arp_packet = ArpPacket::new(ethernet.payload()).unwrap();
-//         //     println!("arp - Src: {}\t Dst: {}", arp_packet.get_sender_hw_addr(), arp_packet.get_target_hw_addr());
-//         // },
-//         EtherTypes::Ipv4 => {
-//             let ipv4_packet = Ipv4Packet::new(ethernet.payload()).unwrap();
-//             // println!("ipv4 - Src: {}\t Dst: {}", ipv4_packet.get_source(), ipv4_packet.get_destination());
-
-//             // if ipv4_addr == ipv4_packet.get_destination() {
-//             //     outgoing = false;
-//             //     address = ipv4_packet.get_source().to_string();
-//             // } else {
-//             //     address = ipv4_packet.get_destination().to_string();
-//             // }
-
-//             let src_ip = ipv4_packet.get_source().to_string();
-//             let dst_ip = ipv4_packet.get_destination().to_string();
-
-//             // print!("DEBUG_LOG - Ipv4Address: {:?}   -   ", ipv4_addr);
-//             // print!("DEBUG_LOG - Address: {}   -   ", address);
-
-//             if let IpNextHeaderProtocols::Udp = ipv4_packet.get_next_level_protocol() {
-//                 let udp_packet = UdpPacket::new(ipv4_packet.payload()).unwrap();
-//                 // let (rest, dns_message) = dnslogger::parse::dns_message(
-//                 //     udp_packet.payload(),
-//                 //     resolve_all_resource_records
-//                 // ).unwrap();
-//                 // println!("{:?}", dns_message);
-//                 // println!("{:02x?}", rest);
-
-//                 let src_port = udp_packet.get_source().to_string();
-//                 let dst_port = udp_packet.get_destination().to_string();
-
-//                 let key = format!("{}:{}:{}:{}", src_ip, dst_ip, src_port, dst_port);
-
-//                 println!("UDP - {} - {}", key, usize::from(udp_packet.payload().len()));
-//                 traffic.entry(key)
-//                     .and_modify(|detail| detail.bytes += usize::from(udp_packet.payload().len()))
-//                     .or_insert( TrafficDetail {
-//                         src_ip: src_ip,
-//                         dst_ip: dst_ip,
-//                         src_port: src_port,
-//                         dst_port: dst_port,
-//                         bytes: usize::from(udp_packet.payload().len())
-//                     }
-//                 );
-
-//                 return true;
-//             }
-
-//             if let IpNextHeaderProtocols::Tcp = ipv4_packet.get_next_level_protocol() {
-//                 let tcp_packet = TcpPacket::new(ipv4_packet.payload()).unwrap();
-//                 let src = format!("{}", tcp_packet.get_source());
-//                 let dst = format!("{}", tcp_packet.get_destination());
-
-//                 let port = if outgoing == true { // mi interessa la mia porta, non quella dall'altra parte
-//                     src
-//                 } else {
-//                     dst
-//                 };
-
-//                 let src_port = tcp_packet.get_source().to_string();
-//                 let dst_port = tcp_packet.get_destination().to_string();
-
-//                 let key = format!("{}:{}:{}:{}", src_ip, dst_ip, src_port, dst_port);
-
-//                 println!("TCP - {} - {}", key, usize::from(tcp_packet.payload().len()));
-//                 traffic.entry(key)
-//                     .and_modify(|detail| detail.bytes += usize::from(tcp_packet.payload().len()))
-//                     .or_insert( TrafficDetail {
-//                         src_ip: src_ip,
-//                         dst_ip: dst_ip,
-//                         src_port: src_port,
-//                         dst_port: dst_port,
-//                         bytes: usize::from(tcp_packet.payload().len())
-//                     }
-//                 );
-
-//                 return true;
-//             }
-            
-//             // if let IpNextHeaderProtocols::Tcp = ipv4_packet.get_next_level_protocol() {
-//             //     let tcp_packet = TcpPacket::new(ipv4_packet.payload()).unwrap();
-//                 // println!("TCP - Src: {}\t Dst: {}", tcp_packet.get, ipv4_packet.get_destination());
-//             // }
-//         },
-//         _ => println!("unhandled packet: {:?}", ethernet)
-//     }
-
-//     return false;
-// }
 
 // use rayon;
 // use std::thread;
