@@ -8,41 +8,41 @@ pub mod state_handler {
 
     enum State {
         Running,
-        Paused,
-        Stopped
+        Paused
     }
 
     impl StateHandler {
         pub fn new() -> Self {
             StateHandler {
-                mtx: Mutex::new(State::Paused),
+                mtx: Mutex::new(State::Running),
                 cnd_var: Condvar::new()
             }
         }
 
         pub fn run(&self) {
+            println!("Run");
             let mut state = self.mtx.lock().unwrap();
+            println!("Run:: lock acquired");
 
             *state = State::Running;
+            println!("Run::State running");
             self.cnd_var.notify_all();
         }
 
         pub fn pause(&self) {
             let mut state = self.mtx.lock().unwrap();
-
+            println!("Pause:: lock acquired");
             *state = State::Paused;
-            self.wait();
-        }
 
-        pub fn wait(&self) {
-            let mut _state = self.mtx.lock().unwrap();
-
-            _state = self.cnd_var.wait_while( _state, |s| {
+            let _res = self.cnd_var.wait_while( state, |s| {
                 match *s {
-                    State::Paused => true,
+                    State::Paused => {
+                        println!("--- Still paused ---");
+                        true
+                    },
                     _ => false
                 }
-            }).unwrap();
+            });
 
             println!("Done waiting")
         }

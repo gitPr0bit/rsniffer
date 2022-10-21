@@ -1,5 +1,5 @@
-use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap};
-use crate::lib::{report::report::TrafficDetail, parser::parser::*};
+use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap, io, sync::{Arc, Mutex, mpsc}, thread};
+use crate::lib::{report::report::TrafficDetail, parser::parser::*, state_handler::state_handler::{self, StateHandler}};
 use pcap::{Capture, Device, Address};
 use pnet::packet::{
     ethernet::{EtherTypes, EthernetPacket},
@@ -52,32 +52,72 @@ fn main() {
 
 
     println!("Links: {:?}", capture.list_datalinks());
-    let mut traffic: HashMap<String, TrafficDetail> = HashMap::new();
+    let mut traffic: Arc<Mutex<HashMap<String, TrafficDetail>>> = Arc::new(Mutex::new(HashMap::new()));
+    let traffic_t = traffic.clone();
 
-    // get 10 packets
-    let mut count = 0;
-    while let Ok(packet) = capture.next() { // handle errors
-        let parsed = parse(&packet);
-        if parsed.handled == true {
-            count += 1;
-            traffic.entry(parsed.key())
-                    .and_modify(|detail| {
-                        println!("Adding {} bytes to {}", parsed.bytes, parsed.key()); 
-                        detail.bytes += parsed.bytes;
-                        detail.npackets += 1;
-                    })
-                    .or_insert( parsed );
+    let state_handler = Arc::new(StateHandler::new());
+    let sh = Arc::clone(&state_handler);
+    
+    let (tx, rx) = mpsc::channel();
+
+    let capture_thread = thread::spawn(move || {
+        while let Ok(packet) = capture.next() { // handle errors
+            match rx.try_recv() {
+                Ok(str) => {
+                    match str {
+                        "p" => state_handler.pause(),
+                        "s" => break,
+                        _ => {}
+                    }
+                },
+                Err(_) => {}
+            };
+
+            let parsed = parse(&packet);
+            if parsed.handled == true {
+                let mut traffic = traffic_t.lock().unwrap();
+                traffic.entry(parsed.key())
+                        .and_modify(|detail| {
+                            println!("Adding {} bytes to {}", parsed.bytes, parsed.key()); 
+                            detail.bytes += parsed.bytes;
+                            detail.npackets += 1;
+                        })
+                        .or_insert( parsed );
+            }
         }
+    });
 
-        if count == 10 { break; }
+    println!("Capture started. Press 's' to stop");
+    let mut input_string = String::new();
 
-        // println!("Packet: {:02x?}", packet);
-        // //print!("Dst addr: {}", format!("{:02x?}", &packet.unwrap().data[0..6]));
-        // print!("Dst addr: {}", format!("{:02x?}", String::from_utf8(packet.data[0..6].to_vec())));
-        // println!("Datalink: {}", capture.get_datalink().0);
+    while input_string.trim() != "s" {
+        input_string.clear();
+        io::stdin().read_line(&mut input_string).unwrap();
 
-        // println!("Dst MAC: {}", &packet.unwrap().data[0..6].into_iter().map(|b| { format!("{:02x}", b) }));
+        match input_string.trim() {
+            "p" => {
+                match tx.send("p") {
+                    Ok(_) => println!("Paused. Press 'r' to resume..."),
+                    Err(err) => println!("{:?}", err)
+                }
+                
+            },
+            "r" => {
+                sh.run();
+                println!("Resumed. Press 'p' to pause...");
+            },
+            "s" => {
+                sh.run();
+                match tx.send("s") {
+                    Ok(_) => println!("Stopped"),
+                    Err(err) => println!("{:?}", err)
+                }
+            },
+            &_ => println!("")
+        }
     }
+    capture_thread.join();
+    println!("See you later!");
 
 
     let mut table = Table::new();
@@ -91,7 +131,8 @@ fn main() {
     table.set_format(format);
     table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #"]);
 
-    for detail in traffic.iter() {
+    let traffic_report = traffic.lock().unwrap();
+    for detail in traffic_report.iter() {
         table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes, detail.1.npackets]);
         // print!("{:?}", detail);
     }
