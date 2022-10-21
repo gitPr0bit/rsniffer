@@ -56,10 +56,7 @@ fn main() {
 
     // get 10 packets
     let mut count = 0;
-    loop {
-        let packet = capture.next().unwrap(); // handle errors
-
-
+    while let Ok(packet) = capture.next() { // handle errors
         let parsed = parse(&packet);
         if parsed.handled == true {
             count += 1;
@@ -101,11 +98,7 @@ fn main() {
 
     table.printstd();
 
-    // let stats = capture.stats().unwrap();
-    // println!(
-    //     "Received: {}, dropped: {}, if_dropped: {}",
-    //     stats.received, stats.dropped, stats.if_dropped
-    // );
+
 }
 
 
