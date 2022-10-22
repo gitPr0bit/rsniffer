@@ -35,8 +35,8 @@ pub mod report {
         }
     }
 
-    struct TrafficReport {
-        traffic: Arc<Mutex<HashMap<String, TrafficDetail>>>,
+    pub struct TrafficReport {
+        traffic: HashMap<String, TrafficDetail>,
         file: File
     }
 
@@ -59,12 +59,12 @@ pub mod report {
             };
 
             Self {
-                traffic: Arc::new(Mutex::new(HashMap::new())),
+                traffic: HashMap::new(),
                 file
             }
         }
 
-        pub fn write(&self) {
+        pub fn write(&mut self) {
             let mut table = Table::new();
             let format = format::FormatBuilder::new()
                 .column_separator('|')
@@ -76,10 +76,26 @@ pub mod report {
             table.set_format(format);
             table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #"]);
 
-            let traffic_report = self.traffic.lock().unwrap();
-            for detail in traffic_report.iter() {
+            for detail in self.traffic.iter() {
                 table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes, detail.1.npackets]);
                 // print!("{:?}", detail);
+            }
+
+            match table.print(&mut self.file) {
+                Err(why) => panic!("Couldn't print report table to destination file. {}", why),
+                Ok(_lines) => {},
+            }
+        }
+
+        pub fn new_detail(&mut self, ndetail: TrafficDetail) {
+            if ndetail.handled == true {
+                self.traffic.entry(ndetail.key())
+                        .and_modify(|detail| {
+                            println!("Adding {} bytes to {}", ndetail.bytes, ndetail.key()); 
+                            detail.bytes += ndetail.bytes;
+                            detail.npackets += 1;
+                        })
+                        .or_insert( ndetail );
             }
         }
     }

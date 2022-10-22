@@ -1,5 +1,5 @@
 use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap, io, sync::{Arc, Mutex, mpsc}, thread, path::Path, fs::File};
-use crate::lib::{report::report::TrafficDetail, parser::parser::*, state_handler::state_handler::{self, StateHandler}};
+use crate::lib::{report::{report::{TrafficDetail, TrafficReport}, self}, parser::parser::*, state_handler::state_handler::{self, StateHandler}};
 use pcap::{Capture, Device, Address};
 use pnet::packet::{
     ethernet::{EtherTypes, EthernetPacket},
@@ -46,12 +46,13 @@ fn main() {
             Err(e) => panic!("Error activating capture: {:?}", e)
         },
         Err(e) => panic!("Error opening capture: {:?}", e)
-    }; 
+    };
 
 
     println!("Links: {:?}", capture.list_datalinks());
-    let mut traffic: Arc<Mutex<HashMap<String, TrafficDetail>>> = Arc::new(Mutex::new(HashMap::new()));
-    let traffic_t = traffic.clone();
+
+    let report_handler = Arc::new(Mutex::new(TrafficReport::default()));
+    let report = Arc::clone(&report_handler);
 
     let state_handler = Arc::new(StateHandler::new());
     let sh = Arc::clone(&state_handler);
@@ -59,30 +60,34 @@ fn main() {
     let (tx, rx) = mpsc::channel();
 
     let capture_thread = thread::spawn(move || {
-        while let Ok(packet) = capture.next() { // handle errors
+        let mut cap = match capture.setnonblock() {
+            Ok(nb_capture) => nb_capture,
+            Err(e) => panic!("Error opening capture: {:?}", e)
+        };
+
+        loop {
             match rx.try_recv() {
                 Ok(str) => {
                     match str {
                         "p" => state_handler.pause(),
-                        "s" => break,
+                        "s" => {
+                            println!("Ok, should stop...");
+                            break
+                        },
                         _ => {}
                     }
                 },
                 Err(_) => {}
             };
 
-            let parsed = parse(&packet);
-            if parsed.handled == true {
-                let mut traffic = traffic_t.lock().unwrap();
-                traffic.entry(parsed.key())
-                        .and_modify(|detail| {
-                            println!("Adding {} bytes to {}", parsed.bytes, parsed.key()); 
-                            detail.bytes += parsed.bytes;
-                            detail.npackets += 1;
-                        })
-                        .or_insert( parsed );
+            if let Ok(packet) = cap.next() { // handle errors
+                let parsed = parse(&packet);
+                let mut rh = report.lock().unwrap();
+                rh.new_detail(parsed);
             }
         }
+
+        println!("F**ck! I screwed up")
     });
 
     println!("Capture started. Press 's' to stop");
@@ -115,40 +120,10 @@ fn main() {
         }
     }
     capture_thread.join();
-    println!("See you later!");
-
-
-    let mut table = Table::new();
-    let format = format::FormatBuilder::new()
-        .column_separator('|')
-        .borders('|')
-        .separators(&[format::LinePosition::Top, format::LinePosition::Bottom, format::LinePosition::Title],
-                      format::LineSeparator::new('-', '+', '+', '+'))
-        .padding(1, 1)
-        .build();
-    table.set_format(format);
-    table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #"]);
-
-    let traffic_report = traffic.lock().unwrap();
-    for detail in traffic_report.iter() {
-        table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes, detail.1.npackets]);
-        // print!("{:?}", detail);
-    }
-
-    // Try printing to file
-    let path = Path::new("sniff_report.txt");
-    let display = path.display();
-
-    // Open a file in write-only mode, returns `io::Result<File>`
-    let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why),
-        Ok(file) => file,
-    };
-
-    match table.print(&mut file) {
-        Err(why) => panic!("couldn't create {}: {}", display, why),
-        Ok(_lines) => {},
-    }
+    
+    println!("Writing report to file...");
+    let mut rh = report_handler.lock().unwrap();
+    rh.write();
 }
 
 
