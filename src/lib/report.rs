@@ -1,5 +1,7 @@
 pub mod report {
-    use std::{collections::HashMap, hash::Hash};
+    use std::{collections::HashMap, fs::File, path::Path, sync::{Mutex, Arc}};
+
+    use prettytable::{Table, format};
 
     #[derive(Debug)]
     pub struct TrafficDetail {
@@ -34,18 +36,52 @@ pub mod report {
     }
 
     struct TrafficReport {
-        traffic: HashMap<String, TrafficDetail>
+        traffic: Arc<Mutex<HashMap<String, TrafficDetail>>>,
+        file: File
     }
 
-    impl TrafficReport {
-        pub fn new() -> Self {
-            Self {
-                traffic: HashMap::new()
-            }
+    impl Default for TrafficReport {
+        fn default() -> Self {
+            let default_path = String::from("sniff_report.txt");
+            TrafficReport::new(default_path)
         }
     }
 
-    // let mut traffic: HashMap<String, TrafficDetail> = HashMap::new();
+    impl TrafficReport {
+        pub fn new(file_path: String) -> Self {
+            let path = Path::new(&file_path);
+            let display = path.display();
 
+            // Open a file in write-only mode, returns `io::Result<File>`
+            let mut file = match File::create(&path) {
+                Err(why) => panic!("couldn't create {}: {}", display, why),
+                Ok(file) => file,
+            };
+
+            Self {
+                traffic: Arc::new(Mutex::new(HashMap::new())),
+                file
+            }
+        }
+
+        pub fn write(&self) {
+            let mut table = Table::new();
+            let format = format::FormatBuilder::new()
+                .column_separator('|')
+                .borders('|')
+                .separators(&[format::LinePosition::Top, format::LinePosition::Bottom, format::LinePosition::Title],
+                            format::LineSeparator::new('-', '+', '+', '+'))
+                .padding(1, 1)
+                .build();
+            table.set_format(format);
+            table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #"]);
+
+            let traffic_report = self.traffic.lock().unwrap();
+            for detail in traffic_report.iter() {
+                table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes, detail.1.npackets]);
+                // print!("{:?}", detail);
+            }
+        }
+    }
 
 }

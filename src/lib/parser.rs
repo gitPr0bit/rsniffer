@@ -2,10 +2,10 @@ pub mod parser {
     use pnet::packet::{
         ethernet::{EtherTypes, EthernetPacket},
         ip::IpNextHeaderProtocols,
-        ipv4::{Ipv4Packet, self},
+        ipv4::{Ipv4Packet},
         udp::UdpPacket,
         tcp::TcpPacket,
-        Packet, arp::ArpPacket, PacketSize, ipv6::Ipv6Packet, icmp::IcmpPacket, icmpv6::Icmpv6Packet,
+        Packet, ipv6::Ipv6Packet
     };
     
     use crate::lib::report::report::TrafficDetail;

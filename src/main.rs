@@ -1,4 +1,4 @@
-use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap, io, sync::{Arc, Mutex, mpsc}, thread};
+use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap, io, sync::{Arc, Mutex, mpsc}, thread, path::Path, fs::File};
 use crate::lib::{report::report::TrafficDetail, parser::parser::*, state_handler::state_handler::{self, StateHandler}};
 use pcap::{Capture, Device, Address};
 use pnet::packet::{
@@ -39,8 +39,6 @@ fn main() {
     //     .immediate_mode(true)
     //     .open()
     //     .unwrap();
-
-    let device_addresses = device.addresses.clone();
 
     let mut capture = match Capture::from_device(device) {
         Ok(cap) => match cap.promisc(true).immediate_mode(true).open() {
@@ -137,9 +135,20 @@ fn main() {
         // print!("{:?}", detail);
     }
 
-    table.printstd();
+    // Try printing to file
+    let path = Path::new("sniff_report.txt");
+    let display = path.display();
 
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Ok(file) => file,
+    };
 
+    match table.print(&mut file) {
+        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Ok(_lines) => {},
+    }
 }
 
 
