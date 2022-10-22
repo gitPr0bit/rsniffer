@@ -1,17 +1,7 @@
-use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, collections::HashMap, io, sync::{Arc, Mutex, mpsc}, thread, path::Path, fs::File};
-use crate::lib::{report::{report::{TrafficDetail, TrafficReport}, self}, parser::parser::*, state_handler::state_handler::{self, StateHandler}};
-use pcap::{Capture, Device, Address};
-use pnet::packet::{
-    ethernet::{EtherTypes, EthernetPacket},
-    ip::IpNextHeaderProtocols,
-    ipv4::{Ipv4Packet, self},
-    udp::UdpPacket,
-    tcp::TcpPacket,
-    Packet, arp::ArpPacket, PacketSize,
-};
-
-#[macro_use] extern crate prettytable;
-use prettytable::{Table, Row, format};
+use core::time;
+use std::{io, sync::{Arc, Mutex}, thread};
+use crate::lib::{report::report::TrafficReport, parser::parser::*, state_handler::state_handler::{StateHandler, State}};
+use pcap::{Capture, Device};
 
 mod lib;
 
@@ -48,16 +38,14 @@ fn main() {
         Err(e) => panic!("Error opening capture: {:?}", e)
     };
 
-
     println!("Links: {:?}", capture.list_datalinks());
 
     let report_handler = Arc::new(Mutex::new(TrafficReport::default()));
     let report = Arc::clone(&report_handler);
 
     let state_handler = Arc::new(StateHandler::new());
-    let sh = Arc::clone(&state_handler);
-    
-    let (tx, rx) = mpsc::channel();
+    let sh_capture = Arc::clone(&state_handler);
+    let sh_report = Arc::clone(&state_handler);
 
     let capture_thread = thread::spawn(move || {
         let mut cap = match capture.setnonblock() {
@@ -66,19 +54,11 @@ fn main() {
         };
 
         loop {
-            match rx.try_recv() {
-                Ok(str) => {
-                    match str {
-                        "p" => state_handler.pause(),
-                        "s" => {
-                            println!("Ok, should stop...");
-                            break
-                        },
-                        _ => {}
-                    }
-                },
-                Err(_) => {}
-            };
+            match state_handler.state() {
+                State::Pausing | State::Paused => state_handler.set_state(State::Paused),
+                State::Stopped => break,
+                _ => {}
+            }
 
             if let Ok(packet) = cap.next() { // handle errors
                 let parsed = parse(&packet);
@@ -90,6 +70,28 @@ fn main() {
         println!("F**ck! I screwed up")
     });
 
+    // Start thread that writes report to files
+    // TODO: move this to a lib's module
+    let report_thread = thread::spawn(move || {
+        let duration = time::Duration::from_secs(5);
+
+        loop {
+            match sh_report.state() {
+                State::Pausing | State::Paused => sh_report.set_state(State::Paused),
+                State::Stopped => break,
+                _ => {}
+            }
+
+            thread::sleep(duration);
+            let mut rh = report_handler.lock().unwrap();
+
+            println!("\nWriting report to file...");
+            rh.write();
+        }
+
+        println!("Leaving report loop :D");
+    });
+
     println!("Capture started. Press 's' to stop");
     let mut input_string = String::new();
 
@@ -99,31 +101,23 @@ fn main() {
 
         match input_string.trim() {
             "p" => {
-                match tx.send("p") {
-                    Ok(_) => println!("Paused. Press 'r' to resume..."),
-                    Err(err) => println!("{:?}", err)
-                }
-                
+                sh_capture.set_state(State::Pausing);
+                println!("Paused. Press 'r' to resume...");
             },
             "r" => {
-                sh.run();
+                sh_capture.set_state(State::Running);
                 println!("Resumed. Press 'p' to pause...");
             },
             "s" => {
-                sh.run();
-                match tx.send("s") {
-                    Ok(_) => println!("Stopped"),
-                    Err(err) => println!("{:?}", err)
-                }
+                sh_capture.set_state(State::Stopped);
+                println!("Stopped");
             },
             &_ => println!("")
         }
     }
+
     capture_thread.join();
-    
-    println!("Writing report to file...");
-    let mut rh = report_handler.lock().unwrap();
-    rh.write();
+    report_thread.join();
 }
 
 

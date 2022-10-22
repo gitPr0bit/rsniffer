@@ -1,7 +1,8 @@
 pub mod report {
-    use std::{collections::HashMap, fs::File, path::Path, sync::{Mutex, Arc}};
-
-    use prettytable::{Table, format};
+    use std::io::Write;
+    use std::time::SystemTime;
+    use std::{collections::HashMap, fs::File, path::Path};
+    use prettytable::{Table, format, row};
 
     #[derive(Debug)]
     pub struct TrafficDetail {
@@ -37,7 +38,7 @@ pub mod report {
 
     pub struct TrafficReport {
         traffic: HashMap<String, TrafficDetail>,
-        file: File
+        file_path: String
     }
 
     impl Default for TrafficReport {
@@ -49,7 +50,19 @@ pub mod report {
 
     impl TrafficReport {
         pub fn new(file_path: String) -> Self {
-            let path = Path::new(&file_path);
+            Self {
+                traffic: HashMap::new(),
+                file_path
+            }
+        }
+
+        pub fn write(&mut self) {
+            if self.traffic.len() == 0 {
+                // Nothing to print
+                return;
+            }
+
+            let path = Path::new(&self.file_path);
             let display = path.display();
 
             // Open a file in write-only mode, returns `io::Result<File>`
@@ -58,13 +71,6 @@ pub mod report {
                 Ok(file) => file,
             };
 
-            Self {
-                traffic: HashMap::new(),
-                file
-            }
-        }
-
-        pub fn write(&mut self) {
             let mut table = Table::new();
             let format = format::FormatBuilder::new()
                 .column_separator('|')
@@ -81,9 +87,9 @@ pub mod report {
                 // print!("{:?}", detail);
             }
 
-            match table.print(&mut self.file) {
+            match table.print(&mut file) {
                 Err(why) => panic!("Couldn't print report table to destination file. {}", why),
-                Ok(_lines) => {},
+                Ok(_lines) => { }
             }
         }
 

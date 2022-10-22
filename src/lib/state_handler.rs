@@ -6,9 +6,11 @@ pub mod state_handler {
         cnd_var: Condvar
     }
 
-    enum State {
+    pub enum State {
         Running,
-        Paused
+        Pausing,
+        Paused,
+        Stopped
     }
 
     impl StateHandler {
@@ -19,32 +21,70 @@ pub mod state_handler {
             }
         }
 
-        pub fn run(&self) {
-            println!("Run");
+        fn run(&self) {
+            // println!("state_handler::run");
+
             let mut state = self.mtx.lock().unwrap();
-            println!("Run:: lock acquired");
+            // println!("state_handler::run - lock acquired");
 
             *state = State::Running;
-            println!("Run::State running");
             self.cnd_var.notify_all();
         }
 
-        pub fn pause(&self) {
+        fn pause(&self) {
+            // println!("state_handler::pause");
+
             let mut state = self.mtx.lock().unwrap();
-            println!("Pause:: lock acquired");
+            // println!("state_handler::pause - lock acquired");
             *state = State::Paused;
 
             let _res = self.cnd_var.wait_while( state, |s| {
                 match *s {
-                    State::Paused => {
-                        println!("--- Still paused ---");
-                        true
-                    },
+                    State::Paused => true,
                     _ => false
                 }
             });
 
-            println!("Done waiting")
+            // println!("Done waiting")
+        }
+
+        fn stop(&self) {
+            // println!("state_handler::stop");
+
+            let mut state = self.mtx.lock().unwrap();
+            // println!("state_handler::stop - lock acquired");
+
+            *state = State::Stopped;
+            self.cnd_var.notify_all();
+        }
+
+        pub fn state(&self) -> State {
+            // println!("state_handler::state");
+
+            let state = self.mtx.lock().unwrap();
+            // println!("state_handler::state - lock acquired");
+
+            match *state {
+                State::Running => State::Running,
+                State::Pausing => State::Pausing,
+                State::Paused => State::Paused,
+                State::Stopped => State::Stopped
+            }
+        }
+
+        pub fn set_state(&self, nstate: State) {
+            // println!("state_handler::set_state");
+
+            match nstate {
+                State::Running => self.run(),
+                State::Pausing => {
+                    let mut state = self.mtx.lock().unwrap();
+                    // println!("state_handler::set_state - lock acquired");
+                    *state = State::Pausing
+                },
+                State::Paused => self.pause(),
+                State::Stopped => self.stop()
+            }
         }
     }
 }
