@@ -8,19 +8,19 @@ mod lib;
 fn main() {
     let devices = Device::list().expect("Cannot retrieve devices list");
     let mut device = Device::lookup().expect("device lookup failed");
+    println!("Using device {}", device.name);
 
-    for d in devices {
-        println!("{:?}", d);
+    // for d in devices {
+    //     println!("{:?}", d);
 
-        if d.name == "eth0" { device = d }
-    }
+    //     if d.name == "eth0" { device = d }
+    // }
 
     // // get the default Device
     // let device = Device::lookup()
     //     .expect("device lookup failed");//        .expect("no device available");
-    println!("Using device {}", device.name);
-    let addr = &device.addresses;
-    print!("Addresses: {:?}", addr);
+    // let addr = &device.addresses;
+    // print!("Addresses: {:?}", addr);
 
     // Setup Capture
     // let mut cap = Capture::from_device(device)
@@ -75,8 +75,6 @@ fn main() {
                 }
             }
         }
-
-        println!("F**ck! I screwed up")
     });
 
     // Start thread that writes report to files
@@ -97,8 +95,6 @@ fn main() {
             println!("\nWriting report to file...");
             rh.write();
         }
-
-        println!("Leaving report loop :D");
     });
 
     println!("Capture started. Press 's' to stop");
