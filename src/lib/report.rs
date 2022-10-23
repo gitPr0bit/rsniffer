@@ -1,6 +1,4 @@
 pub mod report {
-    use std::io::Write;
-    use std::time::SystemTime;
     use std::{collections::HashMap, fs::File, path::Path};
     use prettytable::{Table, format, row};
 
@@ -97,7 +95,7 @@ pub mod report {
             if ndetail.handled == true {
                 self.traffic.entry(ndetail.key())
                         .and_modify(|detail| {
-                            println!("Adding {} bytes to {}", ndetail.bytes, ndetail.key()); 
+                            // println!("Adding {} bytes to {}", ndetail.bytes, ndetail.key()); 
                             detail.bytes += ndetail.bytes;
                             detail.npackets += 1;
                         })

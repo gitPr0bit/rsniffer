@@ -1,6 +1,6 @@
 use core::time;
-use std::{io, sync::{Arc, Mutex}, thread};
-use crate::lib::{report::report::TrafficReport, parser::parser::*, state_handler::state_handler::{StateHandler, State}};
+use std::{io, sync::{Arc, Mutex}, thread, cell::RefCell};
+use crate::lib::{report::report::TrafficReport, parser::parser::*, state_handler::state_handler::{StateHandler, State}, capture::capture::*};
 use pcap::{Capture, Device};
 
 mod lib;
@@ -30,15 +30,21 @@ fn main() {
     //     .open()
     //     .unwrap();
 
-    let mut capture = match Capture::from_device(device) {
-        Ok(cap) => match cap.promisc(true).immediate_mode(true).open() {
-            Ok(active_cap) => active_cap,
-            Err(e) => panic!("Error activating capture: {:?}", e)
-        },
-        Err(e) => panic!("Error opening capture: {:?}", e)
-    };
 
-    println!("Links: {:?}", capture.list_datalinks());
+    // let mut test = RefCell::new(String::from("pippo"));
+    // let mut str = test.borrow_mut();
+    // drop(str);
+
+    // test = RefCell::new(String::from("pluto"));
+    // let str2 = test.borrow();
+    // println!("{}", str2);
+
+
+
+    let mut capture = CaptureWrapper::new(device);
+
+
+    // println!("Links: {:?}", capture.list_datalinks());
 
     let report_handler = Arc::new(Mutex::new(TrafficReport::default()));
     let report = Arc::clone(&report_handler);
@@ -48,22 +54,25 @@ fn main() {
     let sh_report = Arc::clone(&state_handler);
 
     let capture_thread = thread::spawn(move || {
-        let mut cap = match capture.setnonblock() {
-            Ok(nb_capture) => nb_capture,
-            Err(e) => panic!("Error opening capture: {:?}", e)
-        };
-
         loop {
             match state_handler.state() {
-                State::Pausing | State::Paused => state_handler.set_state(State::Paused),
-                State::Stopped => break,
-                _ => {}
+                State::Running => capture.start_capture(),
+                State::Pausing | State::Paused => {
+                    capture.stop_capture();
+                    state_handler.set_state(State::Paused);
+                },
+                State::Stopped => {
+                    capture.stop_capture();
+                    break
+                }
             }
 
-            if let Ok(packet) = cap.next() { // handle errors
-                let parsed = parse(&packet);
-                let mut rh = report.lock().unwrap();
-                rh.new_detail(parsed);
+            if capture.active() {
+                if let Ok(packet) = capture.next() { // handle errors
+                    let parsed = parse(&packet);
+                    let mut rh = report.lock().unwrap();
+                    rh.new_detail(parsed);
+                }
             }
         }
 
