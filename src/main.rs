@@ -7,7 +7,7 @@ mod lib;
 
 fn main() {
     let devices = Device::list().expect("Cannot retrieve devices list");
-    let mut device = Device::lookup().expect("device lookup failed");
+    let device = Device::lookup().expect("device lookup failed");
     println!("Using device {}", device.name);
 
     // for d in devices {

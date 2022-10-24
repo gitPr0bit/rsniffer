@@ -11,6 +11,8 @@ pub mod report {
         pub protocol: String,
         pub bytes: usize,
         pub npackets: usize,
+        pub first_ts: String,
+        pub last_ts: String,
         pub handled: bool
     }
 
@@ -24,6 +26,8 @@ pub mod report {
                 protocol: String::new(),
                 bytes: 0,
                 npackets: 1,
+                first_ts: String::new(),
+                last_ts: String::new(),
                 handled: true
             }
         }
@@ -78,10 +82,11 @@ pub mod report {
                 .padding(1, 1)
                 .build();
             table.set_format(format);
-            table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #"]);
+            table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #", "FIRST TIMESTAMP", "LAST TIMESTAMP"]);
 
             for detail in self.traffic.iter() {
-                table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, detail.1.protocol, detail.1.bytes, detail.1.npackets]);
+                table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, 
+                    detail.1.protocol, detail.1.bytes, detail.1.npackets, detail.1.first_ts, detail.1.last_ts]);
                 // print!("{:?}", detail);
             }
 
@@ -95,7 +100,9 @@ pub mod report {
             if ndetail.handled == true {
                 self.traffic.entry(ndetail.key())
                         .and_modify(|detail| {
-                            // println!("Adding {} bytes to {}", ndetail.bytes, ndetail.key()); 
+                            if ndetail.first_ts < detail.first_ts { detail.first_ts = String::from(&ndetail.first_ts); }
+                            if ndetail.last_ts > detail.last_ts { detail.last_ts = String::from(&ndetail.last_ts); }
+
                             detail.bytes += ndetail.bytes;
                             detail.npackets += 1;
                         })

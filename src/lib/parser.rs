@@ -1,4 +1,5 @@
 pub mod parser {
+    use chrono::{DateTime, Utc, NaiveDateTime};
     use pnet::packet::{
         ethernet::{EtherTypes, EthernetPacket},
         ip::IpNextHeaderProtocols,
@@ -14,9 +15,19 @@ pub mod parser {
     pub fn parse(packet: &pcap::Packet) -> TrafficDetail {
         let mut result = TrafficDetail::new();
 
+        parse_timestamp(packet, &mut result);
         parse_layer2(packet, &mut result);
 
         return result;
+    }
+
+    fn parse_timestamp(packet: &pcap::Packet, res: &mut TrafficDetail) {
+        // Get timestamp from header
+        let ts = packet.header.ts.tv_sec;
+        let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts, 0), Utc);
+
+        res.first_ts = dt.to_string();
+        res.last_ts = dt.to_string();
     }
 
     fn parse_layer2(packet: &pcap::Packet, res: &mut TrafficDetail) {
