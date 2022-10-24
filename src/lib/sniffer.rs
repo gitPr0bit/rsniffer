@@ -108,7 +108,7 @@ pub mod sniffer {
                     thread::sleep(duration);
                     let mut rh = rh_report.lock().unwrap();
         
-                    println!("\nWriting report to file...");
+                    // println!("\nWriting report to file...");
                     rh.write();
                 }
             });
