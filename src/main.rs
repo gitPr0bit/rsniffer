@@ -1,6 +1,6 @@
 use core::time;
 use std::io::{self, Write};
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread::{JoinHandle, self};
 use crate::lib::sniffer::{sniffer::Sniffer, self};
 use crossterm::{cursor, terminal, queue, style};
@@ -39,23 +39,22 @@ fn show_capture() -> Sender<bool> {
         let duration = time::Duration::from_millis(1000);
         let mut out = io::stdout();
         let mut show = true;
-        loop {
-            match rx.try_recv() {
-                Ok(_) => {
-                    execute!(out, terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
-                    break
-                },
-                Err(_) => {},
-            };
+        'a:loop {
+            if pause(&rx) { 
+                break 'a; 
+            }
 
-            queue!(out, cursor::MoveToColumn(1)).ok();
-            queue!(out, style::Print("Capturing")).unwrap();
+            queue!(out, style::SetForegroundColor(style::Color::Green), cursor::MoveToColumn(1)).ok();
+            queue!(out, style::Print("Capturing"), style::SetForegroundColor(style::Color::Green)).unwrap();
             out.flush().ok();
 
             if show == true {
                 for _ in 0..3 {
+                    if pause(&rx) { 
+                        break 'a; 
+                    }
                     thread::sleep(time::Duration::from_millis(300));
-                    execute!(out, style::Print(".")).unwrap();
+                    execute!(out, style::Print("."), style::SetForegroundColor(style::Color::Green)).unwrap();
                 }
                 thread::sleep(duration / 2);
             } else {
@@ -68,6 +67,20 @@ fn show_capture() -> Sender<bool> {
     });
 
     tx
+}
+
+fn pause(rx: &Receiver<bool>) -> bool {
+    let mut out = io::stdout();
+    match rx.try_recv() {
+        Ok(_) => {
+            queue!(out, terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
+            queue!(out, style::SetForegroundColor(style::Color::DarkYellow), cursor::MoveToColumn(1)).ok();
+            queue!(out, style::Print("Paused"), style::SetForegroundColor(style::Color::DarkYellow)).unwrap();
+            out.flush().ok();
+            true
+        },
+        Err(_) => false
+    }
 }
 
 fn print_events(sniffer: Sniffer) -> Result<()> {
