@@ -1,5 +1,5 @@
 use std::io;
-use crate::lib::sniffer::sniffer::Sniffer;
+use crate::lib::sniffer::{sniffer::Sniffer, self};
 use pcap::Device;
 
 mod lib;
@@ -9,8 +9,7 @@ fn main() {
     let device = Device::lookup().expect("device lookup failed");
     println!("Using device {}", device.name);
 
-    let sniffer = Sniffer::new(device.name).set_interval(1);
-    sniffer.capture();
+    let sniffer = Sniffer::builder().device(device.name).interval(3).capture();
 
     println!("Capture started. Press 's' to stop");
     let mut input_string = String::new();

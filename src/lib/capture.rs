@@ -9,12 +9,8 @@ pub mod capture {
 
     impl CaptureWrapper {
         pub fn new(dev: String) -> Self {
-            let device = if dev.is_empty() { 
-                Device::lookup().expect("device lookup failed").name
-             } else { dev };
-
             Self { 
-                device,
+                device: Self::sanitize_device(dev),
                 acapture: None,
                 running: false
             }
@@ -67,6 +63,14 @@ pub mod capture {
 
         pub fn active(&self) -> bool {
             self.running
+        }
+
+        fn sanitize_device(dev: String) -> String {
+            if dev.is_empty() { 
+                Device::lookup().expect("device lookup failed").name
+            } else { 
+                dev 
+            }
         }
     }
 }

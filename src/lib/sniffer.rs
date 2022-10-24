@@ -5,6 +5,45 @@ pub mod sniffer {
 
     const DEFAULT_INTERVAL: u64 = 5;
 
+    pub struct SnifferBuilder {
+        device: String,
+        filter: String,
+        interval: u64
+    }
+
+    impl SnifferBuilder {
+        pub fn device(mut self, dev: String) -> SnifferBuilder {
+            // Set the name on the builder itself, and return the builder by value.
+            self.device = dev;
+            self
+        }
+
+        pub fn interval(mut self, interval: u64) -> SnifferBuilder {
+            // Set the name on the builder itself, and return the builder by value.
+            self.interval = interval;
+            self
+        }
+
+        pub fn filter(mut self, filter: String) -> SnifferBuilder {
+            // Set the name on the builder itself, and return the builder by value.
+            self.filter = filter;
+            self
+        }
+
+        pub fn capture(self) -> Sniffer {
+            let sniffer = Sniffer {
+                device: self.device,
+                interval: self.interval,
+                report: Arc::new(Mutex::new(TrafficReport::default())), 
+                state: Arc::new(StateHandler::new())
+            };
+
+            sniffer.start_capture();
+            sniffer.start_report();
+            sniffer
+        }
+    }
+    
     pub struct Sniffer {
         device: String,
         report: Arc<Mutex<TrafficReport>>,
@@ -13,27 +52,13 @@ pub mod sniffer {
     }
 
     impl Sniffer {
-        pub fn new(device: String) -> Self {
-
-            Self { 
-                device, 
-                report: Arc::new(Mutex::new(TrafficReport::default())), 
-                state: Arc::new(StateHandler::new()),
+        pub fn builder() -> SnifferBuilder {
+            SnifferBuilder {
+                device: String::new(),
+                filter: String::new(),
                 interval: DEFAULT_INTERVAL
             }
         }
-
-        pub fn capture(&self) {
-
-            self.start_capture();
-            self.start_report();
-        }
-
-        pub fn set_interval(mut self, interval: u64) -> Sniffer {
-            self.interval = interval;
-            self
-        }
-
 
         fn start_capture(&self) {
             let sh_capture = Arc::clone(&self.state);
