@@ -2,15 +2,19 @@ pub mod capture {
     use pcap::{Capture, Device, Active, Packet, Error};
 
     pub struct CaptureWrapper {
-        device: Device,
+        device: String,
         acapture: Option<Capture<Active>>,
         running: bool
     }
 
     impl CaptureWrapper {
-        pub fn new(dev: Device) -> Self {
+        pub fn new(dev: String) -> Self {
+            let device = if dev.is_empty() { 
+                Device::lookup().expect("device lookup failed").name
+             } else { dev };
+
             Self { 
-                device: dev,
+                device,
                 acapture: None,
                 running: false
             }
@@ -22,8 +26,7 @@ pub mod capture {
                 return;
             }
 
-            let device = self.device.name.as_str();
-            let capture = match Capture::from_device(device) {
+            let capture = match Capture::from_device(self.device.as_str()) {
                 Ok(cap) => match cap.promisc(true).immediate_mode(true).open() {
                     Ok(active_cap) => match active_cap.setnonblock() { // TODO: try directly replacing open() with setnonblock() to see if it opens too
                         Ok(acap) => acap,

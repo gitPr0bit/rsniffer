@@ -1,0 +1,104 @@
+pub mod sniffer {
+    use core::time;
+    use std::{sync::{Arc, Mutex}, thread};
+    use crate::lib::{capture::capture::CaptureWrapper, report::report::TrafficReport, state_handler::state_handler::{State, StateHandler}, parser::parser::parse};
+
+    const DEFAULT_INTERVAL: u64 = 5;
+
+    pub struct Sniffer {
+        device: String,
+        report: Arc<Mutex<TrafficReport>>,
+        state: Arc<StateHandler>,
+        interval: u64
+    }
+
+    impl Sniffer {
+        pub fn new(device: String) -> Self {
+
+            Self { 
+                device, 
+                report: Arc::new(Mutex::new(TrafficReport::default())), 
+                state: Arc::new(StateHandler::new()),
+                interval: DEFAULT_INTERVAL
+            }
+        }
+
+        pub fn capture(&self) {
+
+            self.start_capture();
+            self.start_report();
+        }
+
+        pub fn set_interval(mut self, interval: u64) -> Sniffer {
+            self.interval = interval;
+            self
+        }
+
+
+        fn start_capture(&self) {
+            let sh_capture = Arc::clone(&self.state);
+            let rh_capture = Arc::clone(&self.report);
+            let mut capture = CaptureWrapper::new(String::from(&self.device));
+
+            thread::spawn(move || {
+                loop {
+                    match sh_capture.state() {
+                        State::Running => capture.start_capture(),
+                        State::Pausing | State::Paused => {
+                            capture.stop_capture();
+                            sh_capture.set_state(State::Paused);
+                        },
+                        State::Stopped => {
+                            capture.stop_capture();
+                            break
+                        }
+                    }
+        
+                    if capture.active() {
+                        if let Ok(packet) = capture.next() { // handle errors
+                            let parsed = parse(&packet);
+                            let mut rh = rh_capture.lock().unwrap();
+                            rh.new_detail(parsed);
+                        }
+                    }
+                }
+            });
+        }
+
+        fn start_report(&self) {
+            let sh_report = Arc::clone(&self.state);
+            let rh_report = Arc::clone(&self.report);
+            let interval = self.interval;
+            
+            thread::spawn(move || {
+                let duration = time::Duration::from_secs(interval);
+        
+                loop {
+                    match sh_report.state() {
+                        State::Pausing | State::Paused => sh_report.set_state(State::Paused),
+                        State::Stopped => break,
+                        _ => {}
+                    }
+        
+                    thread::sleep(duration);
+                    let mut rh = rh_report.lock().unwrap();
+        
+                    println!("\nWriting report to file...");
+                    rh.write();
+                }
+            });
+        }
+
+        pub fn resume(&self) {
+            self.state.set_state(State::Running);
+        }
+        
+        pub fn pause(&self) {
+            self.state.set_state(State::Pausing);
+        }
+
+        pub fn stop(&self) {
+            self.state.set_state(State::Stopped);
+        }
+    }
+}

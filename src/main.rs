@@ -1,101 +1,16 @@
-use core::time;
-use std::{io, sync::{Arc, Mutex}, thread, cell::RefCell};
-use crate::lib::{report::report::TrafficReport, parser::parser::*, state_handler::state_handler::{StateHandler, State}, capture::capture::*};
-use pcap::{Capture, Device};
+use std::io;
+use crate::lib::sniffer::sniffer::Sniffer;
+use pcap::Device;
 
 mod lib;
 
 fn main() {
-    let devices = Device::list().expect("Cannot retrieve devices list");
+    // let devices = Device::list().expect("Cannot retrieve devices list");
     let device = Device::lookup().expect("device lookup failed");
     println!("Using device {}", device.name);
 
-    // for d in devices {
-    //     println!("{:?}", d);
-
-    //     if d.name == "eth0" { device = d }
-    // }
-
-    // // get the default Device
-    // let device = Device::lookup()
-    //     .expect("device lookup failed");//        .expect("no device available");
-    // let addr = &device.addresses;
-    // print!("Addresses: {:?}", addr);
-
-    // Setup Capture
-    // let mut cap = Capture::from_device(device)
-    //     .unwrap()
-    //     .promisc(true)
-    //     .immediate_mode(true)
-    //     .open()
-    //     .unwrap();
-
-
-    // let mut test = RefCell::new(String::from("pippo"));
-    // let mut str = test.borrow_mut();
-    // drop(str);
-
-    // test = RefCell::new(String::from("pluto"));
-    // let str2 = test.borrow();
-    // println!("{}", str2);
-
-
-
-    let mut capture = CaptureWrapper::new(device);
-
-
-    // println!("Links: {:?}", capture.list_datalinks());
-
-    let report_handler = Arc::new(Mutex::new(TrafficReport::default()));
-    let report = Arc::clone(&report_handler);
-
-    let state_handler = Arc::new(StateHandler::new());
-    let sh_capture = Arc::clone(&state_handler);
-    let sh_report = Arc::clone(&state_handler);
-
-    let capture_thread = thread::spawn(move || {
-        loop {
-            match state_handler.state() {
-                State::Running => capture.start_capture(),
-                State::Pausing | State::Paused => {
-                    capture.stop_capture();
-                    state_handler.set_state(State::Paused);
-                },
-                State::Stopped => {
-                    capture.stop_capture();
-                    break
-                }
-            }
-
-            if capture.active() {
-                if let Ok(packet) = capture.next() { // handle errors
-                    let parsed = parse(&packet);
-                    let mut rh = report.lock().unwrap();
-                    rh.new_detail(parsed);
-                }
-            }
-        }
-    });
-
-    // Start thread that writes report to files
-    // TODO: move this to a lib's module
-    let report_thread = thread::spawn(move || {
-        let duration = time::Duration::from_secs(5);
-
-        loop {
-            match sh_report.state() {
-                State::Pausing | State::Paused => sh_report.set_state(State::Paused),
-                State::Stopped => break,
-                _ => {}
-            }
-
-            thread::sleep(duration);
-            let mut rh = report_handler.lock().unwrap();
-
-            println!("\nWriting report to file...");
-            rh.write();
-        }
-    });
+    let sniffer = Sniffer::new(device.name).set_interval(1);
+    sniffer.capture();
 
     println!("Capture started. Press 's' to stop");
     let mut input_string = String::new();
@@ -106,23 +21,20 @@ fn main() {
 
         match input_string.trim() {
             "p" => {
-                sh_capture.set_state(State::Pausing);
+                sniffer.pause();
                 println!("Paused. Press 'r' to resume...");
             },
             "r" => {
-                sh_capture.set_state(State::Running);
+                sniffer.resume();
                 println!("Resumed. Press 'p' to pause...");
             },
             "s" => {
-                sh_capture.set_state(State::Stopped);
+                sniffer.stop();
                 println!("Stopped");
             },
             &_ => println!("")
         }
     }
-
-    capture_thread.join();
-    report_thread.join();
 }
 
 
