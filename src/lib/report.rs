@@ -36,6 +36,30 @@ pub mod report {
             
             format!("{}:{}:{}:{}", self.src_ip, self.dst_ip, self.src_port, self.dst_port)
         }
+
+        pub fn bytes(&self) -> String {
+            /// bytes size for 1 kilobyte
+            const KB: usize = 1_000;
+            const _KB: usize = KB - 1; 
+            /// bytes size for 1 megabyte
+            const MB: usize = 1_000_000;
+            const _MB: usize = MB - 1;
+            /// bytes size for 1 gigabyte
+            const GB: usize = 1_000_000_000;
+            const _GB: usize = GB - 1;
+
+            let unit: &str;
+            let bytes: usize;
+
+            match self.bytes {
+                0..=_KB => { unit = " B"; bytes = self.bytes},
+                KB..=_MB => { unit = " KB"; bytes = self.bytes / KB},
+                MB..=_GB => { unit = " MB"; bytes = self.bytes / MB},
+                _ => { unit = " GB"; bytes = self.bytes / GB}
+            };
+
+            format!("{:>5}{:>2}", bytes, unit)
+        }
     }
 
     pub struct TrafficReport {
@@ -86,7 +110,7 @@ pub mod report {
 
             for detail in self.traffic.iter() {
                 table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, 
-                    detail.1.protocol, detail.1.bytes, detail.1.npackets, detail.1.first_ts, detail.1.last_ts]);
+                    detail.1.protocol, detail.1.bytes(), detail.1.npackets, detail.1.first_ts, detail.1.last_ts]);
                 // print!("{:?}", detail);
             }
 
