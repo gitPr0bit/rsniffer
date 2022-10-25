@@ -2,6 +2,16 @@ pub mod report {
     use std::{collections::HashMap, fs::File, path::Path};
     use prettytable::{Table, format, row};
 
+    /// bytes size for 1 kilobyte
+    const KB: usize = 1_000;
+    const _KB: usize = KB - 1; 
+    /// bytes size for 1 megabyte
+    const MB: usize = 1_000_000;
+    const _MB: usize = MB - 1;
+    /// bytes size for 1 gigabyte
+    const GB: usize = 1_000_000_000;
+    const _GB: usize = GB - 1;
+
     #[derive(Debug)]
     pub struct TrafficDetail {
         pub src_ip: String,
@@ -38,16 +48,6 @@ pub mod report {
         }
 
         pub fn bytes(&self) -> String {
-            /// bytes size for 1 kilobyte
-            const KB: usize = 1_000;
-            const _KB: usize = KB - 1; 
-            /// bytes size for 1 megabyte
-            const MB: usize = 1_000_000;
-            const _MB: usize = MB - 1;
-            /// bytes size for 1 gigabyte
-            const GB: usize = 1_000_000_000;
-            const _GB: usize = GB - 1;
-
             let unit: &str;
             let bytes: usize;
 
