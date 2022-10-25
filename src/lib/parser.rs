@@ -24,7 +24,7 @@ pub mod parser {
     fn parse_timestamp(packet: &pcap::Packet, res: &mut TrafficDetail) {
         // Get timestamp from header
         let ts = packet.header.ts.tv_sec;
-        let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts, 0), Utc);
+        let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts.into(), 0), Utc);
 
         res.first_ts = dt.to_string();
         res.last_ts = dt.to_string();
@@ -62,26 +62,37 @@ pub mod parser {
 
     fn parse_udp(packet: IpPacket, res: &mut TrafficDetail) {
         let udp_packet = match packet {
-            IpPacket::V4(ipv4_packet) => UdpPacket::new(ipv4_packet.payload()).unwrap(),
-            IpPacket::V6(ipv6_packet) => UdpPacket::new(ipv6_packet.payload()).unwrap()
+            IpPacket::V4(ipv4_packet) => UdpPacket::new(ipv4_packet.payload()).or(None),
+            IpPacket::V6(ipv6_packet) => UdpPacket::new(ipv6_packet.payload()).or(None)
         };
 
-        res.src_port = udp_packet.get_source().to_string();
-        res.dst_port = udp_packet.get_destination().to_string();
-        res.bytes = usize::from(udp_packet.payload().len());
-        res.protocol = String::from("UDP");
+        match udp_packet {
+            Some(packet) => {
+                res.src_port = packet.get_source().to_string();
+                res.dst_port = packet.get_destination().to_string();
+                res.bytes = usize::from(packet.payload().len());
+                res.protocol = String::from("UDP");
+            },
+            None => res.handled = false
+        }
+        
     }
 
     fn parse_tcp(packet: IpPacket, res: &mut TrafficDetail) {
-        let tcp_packet = match packet {
-            IpPacket::V4(ipv4_packet) => TcpPacket::new(ipv4_packet.payload()).unwrap(),
-            IpPacket::V6(ipv6_packet) => TcpPacket::new(ipv6_packet.payload()).unwrap()
+        let tcp_packet: Option<TcpPacket> = match packet {
+            IpPacket::V4(ipv4_packet) => TcpPacket::new(ipv4_packet.payload()).or(None),
+            IpPacket::V6(ipv6_packet) => TcpPacket::new(ipv6_packet.payload()).or(None)
         };
 
-        res.src_port = tcp_packet.get_source().to_string();
-        res.dst_port = tcp_packet.get_destination().to_string();
-        res.bytes = usize::from(tcp_packet.payload().len());
-        res.protocol = String::from("TCP");
+        match tcp_packet {
+            Some(packet) => {
+                res.src_port = packet.get_source().to_string();
+                res.dst_port = packet.get_destination().to_string();
+                res.bytes = usize::from(packet.payload().len());
+                res.protocol = String::from("TCP");
+            },
+            None => res.handled = false
+        }
     }
 
 
