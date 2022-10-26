@@ -126,9 +126,13 @@ fn flush_resize_events(first_resize: (u16, u16)) -> ((u16, u16), (u16, u16)) {
 
 fn main() {
     let device = Device::lookup().expect("device lookup failed");
-    println!("Using device {}", device.name);
+    let dname = match device {
+        Some(d) => d.name,
+        None => String::new()
+    };
+    println!("Using device {}", dname);
 
-    let sniffer = Sniffer::builder().device(device.name).interval(3).capture();
+    let sniffer = Sniffer::builder().device(dname).interval(3).capture();
 
     setup_terminal();
     print_help().ok();

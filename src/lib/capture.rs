@@ -56,7 +56,7 @@ pub mod capture {
 
         pub fn next(&mut self) -> Result<Packet, Error> {
             match &mut self.acapture {
-                Some(cap) => cap.next(),
+                Some(cap) => cap.next_packet(),
                 None => panic!("There's no active capture!")
             }
         }
@@ -67,7 +67,7 @@ pub mod capture {
 
         fn sanitize_device(dev: String) -> String {
             if dev.is_empty() { 
-                Device::lookup().expect("device lookup failed").name
+                Device::lookup().unwrap().unwrap().name
             } else { 
                 dev 
             }
