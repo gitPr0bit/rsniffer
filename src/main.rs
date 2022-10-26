@@ -13,16 +13,13 @@ mod lib;
 use std::io::stdout;
 
 use crossterm::event::{
-    poll, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+    poll,
 };
 use crossterm::{
-    cursor::position,
     event::{
-        read, DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event, KeyCode,
+        read, Event, KeyCode,
     },
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode},
     Result,
 };
 use std::time::Duration;
@@ -32,6 +29,50 @@ const HELP: &str = r#"
  - Hit "r" to resume;
  - Use Esc or hit "q" to quit;
 "#;
+
+
+fn main() {
+    let device = Device::lookup().expect("device lookup failed");
+    let dname = match device {
+        Some(d) => d.name,
+        None => String::new()
+    };
+    println!("Using device {}", dname);
+
+    let sniffer = Sniffer::builder().device(dname).interval(3).capture();
+
+    setup_terminal();
+    print_help().ok();
+
+    // let mut stdout = stdout();
+    // execute!(
+    //     stdout,
+    //     EnableBracketedPaste,
+    //     EnableFocusChange,
+    //     EnableMouseCapture,
+    //     PushKeyboardEnhancementFlags(
+    //         KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+    //             | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
+    //             | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
+    //     )
+    // )?;
+
+    if let Err(e) = print_events(sniffer) {
+        println!("Error: {:?}\r", e);
+    }
+
+    // execute!(
+    //     stdout,
+    //     DisableBracketedPaste,
+    //     PopKeyboardEnhancementFlags,
+    //     DisableFocusChange,
+    //     DisableMouseCapture
+    // )?;
+
+    cleanup_terminal();
+}
+
+
 
 fn show_capture() -> Sender<bool> {
     let (tx, rx) = mpsc::channel();
@@ -124,47 +165,6 @@ fn flush_resize_events(first_resize: (u16, u16)) -> ((u16, u16), (u16, u16)) {
     return (first_resize, last_resize);
 }
 
-fn main() {
-    let device = Device::lookup().expect("device lookup failed");
-    let dname = match device {
-        Some(d) => d.name,
-        None => String::new()
-    };
-    println!("Using device {}", dname);
-
-    let sniffer = Sniffer::builder().device(dname).interval(3).capture();
-
-    setup_terminal();
-    print_help().ok();
-
-    // let mut stdout = stdout();
-    // execute!(
-    //     stdout,
-    //     EnableBracketedPaste,
-    //     EnableFocusChange,
-    //     EnableMouseCapture,
-    //     PushKeyboardEnhancementFlags(
-    //         KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-    //             | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
-    //             | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
-    //     )
-    // )?;
-
-    if let Err(e) = print_events(sniffer) {
-        println!("Error: {:?}\r", e);
-    }
-
-    // execute!(
-    //     stdout,
-    //     DisableBracketedPaste,
-    //     PopKeyboardEnhancementFlags,
-    //     DisableFocusChange,
-    //     DisableMouseCapture
-    // )?;
-
-    cleanup_terminal();
-}
-
 fn print_help() -> Result<()> {
     let mut out = io::stdout();
     for line in HELP.split(';') {
@@ -208,35 +208,3 @@ fn cleanup_terminal() {
 
 	terminal::disable_raw_mode().unwrap();
 }
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-// use rayon;
-// use std::thread;
-// use std::time::Duration;
-
-// fn main() {
-//     println!("Il thread principale ha id {:?}", thread::current().id());
-//     //Il thread pool racchiude al proprio interno i thread usati per l'elaborazione
-//     let tp = rayon::ThreadPoolBuilder::new().build().unwrap();
-//     println!("Il numero dei thread nel thread pool è {}", rayon::current_num_threads());
-//     //uno scope delimita un gruppo di task: lo scope termina quando tutti i task creati al suo
-//     //interno saranno finiti
-//     rayon::scope(|s| {
-//         println!("Lo scope è eseguito nel thread con id {:?}", thread::current().id());
-//         //esempio di dati da elaborare
-//         let v = vec!["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p"];
-//         for msg in v.into_iter() {
-//             //creo un nuovo task che sarà eseguito nel thread pool
-//             s.spawn(move|_|{
-//                 let id = thread::current().id();
-//                 println!("Elaboro il messaggio {} nel thread {:?}",msg,id);
-//                 //simulo un'attività lunga
-//                 thread::sleep(Duration::from_secs(1));
-//             });
-//         }
-//     });
-//     println!("Done");
-// }

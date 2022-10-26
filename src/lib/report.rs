@@ -108,7 +108,12 @@ pub mod report {
             table.set_format(format);
             table.set_titles(row!["SRC_IP", "DST_IP", "SRC_PORT", "DST_PORT", "TRANSPORT", "BYTES", "PACKETS #", "FIRST TIMESTAMP", "LAST TIMESTAMP"]);
 
-            for detail in self.traffic.iter() {
+
+            // TODO: implement sorting for every field of the table
+            let mut sorted: Vec<_> = self.traffic.iter().collect();
+            sorted.sort_by(|a, b| a.1.bytes.cmp(&b.1.bytes));
+
+            for detail in sorted {
                 table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, 
                     detail.1.protocol, detail.1.bytes(), detail.1.npackets, detail.1.first_ts, detail.1.last_ts]);
                 // print!("{:?}", detail);
