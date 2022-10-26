@@ -14,7 +14,7 @@ pub mod sniffer {
     impl SnifferBuilder {
         pub fn device(mut self, dev: String) -> SnifferBuilder {
             // Set the name on the builder itself, and return the builder by value.
-            self.device = dev;
+            self.device = if dev.is_empty() { CaptureWrapper::default_device() } else { dev };
             self
         }
 
@@ -64,16 +64,28 @@ pub mod sniffer {
             let sh_capture = Arc::clone(&self.state);
             let rh_capture = Arc::clone(&self.report);
             let mut capture = CaptureWrapper::new(String::from(&self.device));
+            match capture.start_capture() {
+                Ok(_) => {},
+                Err(e) => panic!("{}", e)
+            }
 
             thread::spawn(move || {
+                let _raii = StateRAII{ state: Arc::clone(&sh_capture) };
                 loop {
                     match sh_capture.state() {
-                        State::Running => capture.start_capture(),
+                        State::Running => match capture.start_capture() {
+                            Ok(_) => {},
+                            Err(e) => { 
+                                // sh_capture.set_state(State::Stopped);
+                                println!("{:?}", e);
+                                break;
+                             }
+                        },
                         State::Pausing | State::Paused => {
                             capture.stop_capture();
                             sh_capture.set_state(State::Paused);
                         },
-                        State::Stopped => {
+                        State::Stopped | State::Dead => {
                             capture.stop_capture();
                             break
                         }
@@ -101,7 +113,7 @@ pub mod sniffer {
                 loop {
                     match sh_report.state() {
                         State::Pausing | State::Paused => sh_report.set_state(State::Paused),
-                        State::Stopped => break,
+                        State::Stopped | State::Dead => break,
                         _ => {}
                     }
         
@@ -114,6 +126,10 @@ pub mod sniffer {
             });
         }
 
+        pub fn device(&self) -> String {
+            String::from(&self.device)
+        }
+
         pub fn resume(&self) {
             self.state.set_state(State::Running);
         }
@@ -124,6 +140,23 @@ pub mod sniffer {
 
         pub fn stop(&self) {
             self.state.set_state(State::Stopped);
+        }
+
+        pub fn dead(&self) -> bool {
+            match self.state.state() {
+                State::Dead => true,
+                _ => false
+            }
+        }
+    }
+
+    struct StateRAII {
+        state: Arc<StateHandler>
+    }
+
+    impl Drop for StateRAII {
+        fn drop(&mut self) {
+            self.state.set_state(State::Dead);
         }
     }
 }

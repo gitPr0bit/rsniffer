@@ -10,7 +10,8 @@ pub mod state_handler {
         Running,
         Pausing,
         Paused,
-        Stopped
+        Stopped,
+        Dead
     }
 
     impl StateHandler {
@@ -68,7 +69,8 @@ pub mod state_handler {
                 State::Running => State::Running,
                 State::Pausing => State::Pausing,
                 State::Paused => State::Paused,
-                State::Stopped => State::Stopped
+                State::Stopped => State::Stopped,
+                State::Dead => State::Dead
             }
         }
 
@@ -83,7 +85,11 @@ pub mod state_handler {
                     *state = State::Pausing
                 },
                 State::Paused => self.pause(),
-                State::Stopped => self.stop()
+                State::Stopped => self.stop(),
+                State::Dead => { 
+                    let mut state = self.mtx.lock().unwrap();
+                    *state = State::Dead 
+                }
             }
         }
     }

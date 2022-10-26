@@ -17,24 +17,26 @@ pub mod capture {
         }
         
 
-        pub fn start_capture(&mut self) {
+        pub fn start_capture(&mut self) -> Result<(), Error> {
             if self.running == true  {
-                return;
+                return Ok(());
             }
 
             let capture = match Capture::from_device(self.device.as_str()) {
                 Ok(cap) => match cap.promisc(true).immediate_mode(true).open() {
                     Ok(active_cap) => match active_cap.setnonblock() { // TODO: try directly replacing open() with setnonblock() to see if it opens too
                         Ok(acap) => acap,
-                        Err(e) => panic!("Error activating capture: {:?}", e)
+                        Err(e) => { return Err(e); }
                     },
-                    Err(e) => panic!("Error activating capture: {:?}", e)
+                    Err(e) => { return Err(e); }
                 },
-                Err(e) => panic!("Error opening capture: {:?}", e)
+                Err(e) => { return Err(e); }
             };
 
             self.acapture = Some(capture);
             self.running = true;
+
+            Ok(())
         }
 
 
@@ -63,6 +65,10 @@ pub mod capture {
 
         pub fn active(&self) -> bool {
             self.running
+        }
+
+        pub fn default_device() -> String {
+            Device::lookup().unwrap().unwrap().name
         }
 
         fn sanitize_device(dev: String) -> String {

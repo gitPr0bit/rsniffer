@@ -1,12 +1,16 @@
 use core::time;
 use std::io::{self, Write};
+use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread::{JoinHandle, self};
+use crate::args::args::Args;
 use crate::lib::sniffer::{sniffer::Sniffer, self};
+use clap::Parser;
 use crossterm::{cursor, terminal, queue, style};
 use pcap::Device;
 
 mod lib;
+mod args;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,17 +36,29 @@ const HELP: &str = r#"
 
 
 fn main() {
+    let args = Args::parse();
+
     let device = Device::lookup().expect("device lookup failed");
     let dname = match device {
         Some(d) => d.name,
         None => String::new()
     };
-    println!("Using device {}", dname);
 
-    let sniffer = Sniffer::builder().device(dname).interval(3).capture();
+    let device = match &args.name {
+        Some(name) => String::from(name),
+        None => String::new()
+    };
+
+    let sniffer = Sniffer::builder()
+        .device(String::from(&device))
+        .interval(3)
+        .capture();
 
     setup_terminal();
     print_help().ok();
+    println!("Using device {}", sniffer.device());
+    println!("{:?}", args);
+    println!("\n\n");
 
     // let mut stdout = stdout();
     // execute!(

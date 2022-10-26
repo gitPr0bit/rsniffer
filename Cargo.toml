@@ -12,3 +12,4 @@ rayon = "1.5.3"
 chrono = "0.4.22"
 crossterm = "0.25.0"
 prettytable-rs = "^0.9"
+clap = { version = "4.0.18", features = ["derive"] }
