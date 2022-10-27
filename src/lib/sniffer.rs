@@ -1,7 +1,8 @@
 pub mod sniffer {
     use core::time;
+    use pcap::Device;
     use std::{sync::{Arc, Mutex}, thread};
-    use crate::lib::{capture::capture::CaptureWrapper, report::report::TrafficReport, state_handler::state_handler::{State, StateHandler}, parser::parser::parse};
+    use crate::lib::{capture::capture::CaptureWrapper, report::report::TrafficReport, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
 
     const DEFAULT_INTERVAL: u64 = 5;
 
@@ -57,6 +58,14 @@ pub mod sniffer {
                 device: String::new(),
                 filter: String::new(),
                 interval: DEFAULT_INTERVAL
+            }
+        }
+
+        pub fn devices() -> Vec<String> {
+            match Device::list() {
+                Ok(devices) => devices.iter()
+                .map(|d| parse_device(d)).collect(),
+                Err(e) => vec![e.to_string()]
             }
         }
 

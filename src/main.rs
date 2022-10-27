@@ -3,8 +3,9 @@ use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread::{JoinHandle, self};
-use crate::args::args::Args;
-use crate::lib::sniffer::{sniffer::Sniffer, self};
+use crate::args::args::{Args, Commands};
+use crate::lib::capture::capture::CaptureWrapper;
+use crate::lib::sniffer::{sniffer::Sniffer};
 use clap::Parser;
 use crossterm::{cursor, terminal, queue, style};
 use pcap::Device;
@@ -38,11 +39,16 @@ const HELP: &str = r#"
 fn main() {
     let args = Args::parse();
 
-    let device = Device::lookup().expect("device lookup failed");
-    let dname = match device {
-        Some(d) => d.name,
-        None => String::new()
-    };
+    // You can check for the existence of subcommands, and if found use their
+    // matches just as you would the top level cmd
+    match &args.list {
+        Commands::List => {
+            for d in Sniffer::devices() {
+                println!("{}\n", d);
+            }
+            return;
+        }
+    }
 
     let device = match &args.name {
         Some(name) => String::from(name),

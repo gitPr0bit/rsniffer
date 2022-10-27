@@ -1,5 +1,5 @@
 pub mod args {
-    use clap::Parser;
+    use clap::{Parser, Subcommand};
 
     /// Simple program to greet a person
     #[derive(Parser, Debug)]
@@ -12,5 +12,15 @@ pub mod args {
         /// ID of the capture device
         #[arg(short, long)]
         pub id: Option<u8>,
+
+        /// List of available capture devices
+        #[command(subcommand)]
+        pub list: Commands
+    }
+
+    #[derive(Subcommand, Debug)]
+    pub enum Commands {
+        /// Adds files to myapp
+        List
     }
 }
