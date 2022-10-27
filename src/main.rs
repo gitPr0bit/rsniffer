@@ -42,12 +42,13 @@ fn main() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &args.list {
-        Commands::List => {
+        Some(Commands::List) => {
             for d in Sniffer::devices() {
                 println!("{}\n", d);
             }
             return;
-        }
+        },
+        _ => {}
     }
 
     let device = match &args.name {

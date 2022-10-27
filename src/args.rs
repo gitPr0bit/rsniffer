@@ -15,7 +15,7 @@ pub mod args {
 
         /// List of available capture devices
         #[command(subcommand)]
-        pub list: Commands
+        pub list: Option<Commands>
     }
 
     #[derive(Subcommand, Debug)]
