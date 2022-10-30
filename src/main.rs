@@ -1,25 +1,18 @@
 use core::time;
 use std::io::{self, Write};
-use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, Receiver};
-use std::thread::{JoinHandle, self};
-use crate::args::args::{Args, Commands};
-use crate::lib::capture::capture::CaptureWrapper;
+use std::thread;
+use crate::args::Args;
 use crate::lib::sniffer::{sniffer::Sniffer};
 use clap::Parser;
+use crossterm::style::Stylize;
 use crossterm::{cursor, terminal, queue, style};
-use pcap::Device;
 
 mod lib;
 mod args;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-use std::io::stdout;
-
-use crossterm::event::{
-    poll,
-};
 use crossterm::{
     event::{
         read, Event, KeyCode,
@@ -27,7 +20,6 @@ use crossterm::{
     execute,
     Result,
 };
-use std::time::Duration;
 
 const HELP: &str = r#"
  - Hit "p" to pause;
@@ -37,60 +29,56 @@ const HELP: &str = r#"
 
 
 fn main() {
+    let mut out = io::stdout();
     let args = Args::parse();
+    let broken = false;
+
+    setup_terminal();
+    print_help().ok();
 
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
-    match &args.list {
-        Some(Commands::List) => {
-            for d in Sniffer::devices() {
-                println!("{}\n", d);
-            }
-            return;
-        },
-        _ => {}
+    if args.devices {
+        let str = "Available devices:";
+        println!("\r{}", str);
+        for d in Sniffer::printable_devices() {
+            println!("\n\r{}", d);
+        }
+        return;
     }
 
     let device = match &args.name {
         Some(name) => String::from(name),
-        None => String::new()
+        None => {
+            let devices = Sniffer::devices();
+            let dev = match args.id {
+                Some(id) => if id < devices.len() {
+                    String::from(&devices[id].name)
+                } else {
+                    let error_msg = "\rInvalid ID! Falling back to default device...";
+                    println!("{}", error_msg.magenta());
+                    String::new()
+                },
+                None => String::new()
+            };
+            dev
+        }
     };
 
-    let sniffer = Sniffer::builder()
-        .device(String::from(&device))
-        .interval(3)
-        .capture();
+    let sniffer = match Sniffer::builder().device(String::from(&device)).interval(3).capture() {
+        Ok(s) => s,
+        Err(e) => {
+            println!("\r{}", e.to_string().red());
+            cleanup_terminal();
+            return;
+        }
+    };
 
-    setup_terminal();
-    print_help().ok();
-    println!("Using device {}", sniffer.device());
-    println!("{:?}", args);
-    println!("\n\n");
-
-    // let mut stdout = stdout();
-    // execute!(
-    //     stdout,
-    //     EnableBracketedPaste,
-    //     EnableFocusChange,
-    //     EnableMouseCapture,
-    //     PushKeyboardEnhancementFlags(
-    //         KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-    //             | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
-    //             | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
-    //     )
-    // )?;
+    println!("\rUsing device {}", sniffer.device());
 
     if let Err(e) = print_events(sniffer) {
-        println!("Error: {:?}\r", e);
+        println!("\rError: {:?}\r", e);
     }
-
-    // execute!(
-    //     stdout,
-    //     DisableBracketedPaste,
-    //     PopKeyboardEnhancementFlags,
-    //     DisableFocusChange,
-    //     DisableMouseCapture
-    // )?;
 
     cleanup_terminal();
 }
@@ -174,20 +162,6 @@ fn print_events(sniffer: Sniffer) -> Result<()> {
     Ok(())
 }
 
-// Resize events can occur in batches.
-// With a simple loop they can be flushed.
-// This function will keep the first and last resize event.
-fn flush_resize_events(first_resize: (u16, u16)) -> ((u16, u16), (u16, u16)) {
-    let mut last_resize = first_resize;
-    while let Ok(true) = poll(Duration::from_millis(50)) {
-        if let Ok(Event::Resize(x, y)) = read() {
-            last_resize = (x, y);
-        }
-    }
-
-    return (first_resize, last_resize);
-}
-
 fn print_help() -> Result<()> {
     let mut out = io::stdout();
     for line in HELP.split(';') {
@@ -201,14 +175,7 @@ fn print_help() -> Result<()> {
 fn setup_terminal() {
 	let mut stdout = io::stdout();
 
-	execute!(stdout, terminal::EnterAlternateScreen).unwrap();
 	execute!(stdout, cursor::Hide).unwrap();
-
-	// Needed for when ytop is run in a TTY since TTYs don't actually have an alternate screen.
-	// Must be executed after attempting to enter the alternate screen so that it only clears the
-	// 		primary screen if we are running in a TTY.
-	// If not running in a TTY, then we just end up clearing the alternate screen which should have
-	// 		no effect.
 	execute!(stdout, terminal::Clear(terminal::ClearType::All)).unwrap();
     execute!(stdout, cursor::MoveToRow(0)).ok();
 
@@ -218,16 +185,11 @@ fn setup_terminal() {
 fn cleanup_terminal() {
 	let mut stdout = io::stdout();
 
-	// Needed for when ytop is run in a TTY since TTYs don't actually have an alternate screen.
-	// Must be executed before attempting to leave the alternate screen so that it only modifies the
-	// 		primary screen if we are running in a TTY.
-	// If not running in a TTY, then we just end up modifying the alternate screen which should have
-	// 		no effect.
-	execute!(stdout, cursor::MoveTo(0, 0)).unwrap();
-	execute!(stdout, terminal::Clear(terminal::ClearType::All)).unwrap();
+    execute!(stdout, style::ResetColor, cursor::MoveToColumn(0)).ok();
+    stdout.flush().unwrap();
 
-	execute!(stdout, terminal::LeaveAlternateScreen).unwrap();
-	execute!(stdout, cursor::Show).unwrap();
+    terminal::disable_raw_mode().unwrap();
 
-	terminal::disable_raw_mode().unwrap();
+    println!("\n\nBye bye\n");
+    execute!(stdout, cursor::Show).unwrap();
 }

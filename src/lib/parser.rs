@@ -1,5 +1,6 @@
 pub mod parser {
     use chrono::{DateTime, Utc, NaiveDateTime};
+    use crossterm::style::Stylize;
     use pcap::Device;
     use pnet::packet::{
         ethernet::{EtherTypes, EthernetPacket},
@@ -96,11 +97,15 @@ pub mod parser {
         }
     }
 
-    pub fn parse_device(dev: &Device) -> String {
+    pub fn parse_device(dev: &Device, index: Option<usize>) -> String {
         let mut res = String::new();
+        let i = match index { 
+            Some(indx) => format!("{}. ", indx), 
+            None => String::new()            
+        };
 
         // name
-        res.push_str(&format!("{:<20}", &dev.name));
+        res.push_str(&format!("{}{:<20}", i, &dev.name));
 
         // description
         match &dev.desc {
@@ -110,18 +115,20 @@ pub mod parser {
 
         // addresses
         for a in &dev.addresses {
-            res.push_str(&format!("\n{:<20}\taddress: ", ""));
+            res.push_str(&format!("\n\r{:<20}\taddress: ", ""));
             res.push_str(&a.addr.to_string());
             
-            res.push_str(&format!("\n{:<20}\tnetmask: ", ""));
+            res.push_str(&format!("\n\r{:<20}\tnetmask: ", ""));
             match a.netmask {
                 Some(netmask) => { res.push_str(&netmask.to_string()); },
                 None => {}
             }
 
-            res.push_str(&format!("\n{:<20}\tbroadcast address: ", ""));
             match a.broadcast_addr {
-                Some(baddr) => { res.push_str(&baddr.to_string()); },
+                Some(baddr) => {
+                    res.push_str(&format!("\n\r{:<20}\tbroadcast address: ", ""));
+                    res.push_str(&baddr.to_string()); 
+                },
                 None => {}
             }
         }

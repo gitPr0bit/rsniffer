@@ -1,26 +1,23 @@
-pub mod args {
-    use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
-    /// Simple program to greet a person
-    #[derive(Parser, Debug)]
-    #[command(author, version, about, long_about = None)]
-    pub struct Args {
-        /// Name of the capture device
-        #[arg(short, long)]
-        pub name: Option<String>,
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct Args {
+    /// Name of the capture device
+    #[arg(short, long)]
+    pub name: Option<String>,
 
-        /// ID of the capture device
-        #[arg(short, long)]
-        pub id: Option<u8>,
+    /// ID of the capture device
+    /// (ignored if a name is specified with -n)
+    #[arg(short, long)]
+    pub id: Option<usize>,
 
-        /// List of available capture devices
-        #[command(subcommand)]
-        pub list: Option<Commands>
-    }
+    /// List the available capture interfaces
+    #[clap(short, long)]
+    pub devices: bool,
 
-    #[derive(Subcommand, Debug)]
-    pub enum Commands {
-        /// Adds files to myapp
-        List
-    }
+    /// Sort traffic accorting to specified criteria
+    #[arg(short, long)]
+    pub sort: Option<String>
 }

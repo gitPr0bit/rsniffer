@@ -1,6 +1,6 @@
 pub mod sniffer {
     use core::time;
-    use pcap::Device;
+    use pcap::{Device, Error};
     use std::{sync::{Arc, Mutex}, thread};
     use crate::lib::{capture::capture::CaptureWrapper, report::report::TrafficReport, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
 
@@ -31,7 +31,7 @@ pub mod sniffer {
             self
         }
 
-        pub fn capture(self) -> Sniffer {
+        pub fn capture(self) -> Result<Sniffer, Error> {
             let sniffer = Sniffer {
                 device: self.device,
                 interval: self.interval,
@@ -39,9 +39,13 @@ pub mod sniffer {
                 state: Arc::new(StateHandler::new())
             };
 
-            sniffer.start_capture();
+            match sniffer.start_capture() {
+                Ok(_) => {},
+                Err(e) => { return Err(Error::from(e)); }
+            }
             sniffer.start_report();
-            sniffer
+            
+            Ok(sniffer)
         }
     }
     
@@ -61,21 +65,29 @@ pub mod sniffer {
             }
         }
 
-        pub fn devices() -> Vec<String> {
+        pub fn devices() -> Vec<Device> {
             match Device::list() {
-                Ok(devices) => devices.iter()
-                .map(|d| parse_device(d)).collect(),
+                Ok(devices) => devices,
+                Err(e) => vec![]
+            }
+        }
+
+        pub fn printable_devices() -> Vec<String> {
+            match Device::list() {
+                Ok(devices) => devices.iter().enumerate()
+                .map(|d| parse_device(d.1, Some(d.0))).collect(),
                 Err(e) => vec![e.to_string()]
             }
         }
 
-        fn start_capture(&self) {
+
+        fn start_capture(&self) -> Result<(), Error> {
             let sh_capture = Arc::clone(&self.state);
             let rh_capture = Arc::clone(&self.report);
             let mut capture = CaptureWrapper::new(String::from(&self.device));
             match capture.start_capture() {
                 Ok(_) => {},
-                Err(e) => panic!("{}", e)
+                Err(e) => {return Err(e);}
             }
 
             thread::spawn(move || {
@@ -109,6 +121,8 @@ pub mod sniffer {
                     }
                 }
             });
+
+            Ok(())
         }
 
         fn start_report(&self) {
