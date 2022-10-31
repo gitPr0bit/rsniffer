@@ -1,6 +1,5 @@
 pub mod parser {
     use chrono::{DateTime, Utc, NaiveDateTime};
-    use crossterm::style::Stylize;
     use pcap::Device;
     use pnet::packet::{
         ethernet::{EtherTypes, EthernetPacket},

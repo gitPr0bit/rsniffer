@@ -36,8 +36,6 @@ fn main() {
     setup_terminal();
     print_help().ok();
 
-    // You can check for the existence of subcommands, and if found use their
-    // matches just as you would the top level cmd
     if args.devices {
         let str = "Available devices:";
         println!("\r{}", str);
@@ -65,7 +63,18 @@ fn main() {
         }
     };
 
-    let sniffer = match Sniffer::builder().device(String::from(&device)).interval(3).capture() {
+    let sort = match &args.sort {
+        Some(s) => s.to_string(),
+        None => String::new()
+    };
+
+    let period = match &args.period {
+        Some(s) => *s,
+        None => 1
+    };
+
+
+    let sniffer = match Sniffer::builder().device(String::from(&device)).sort(sort).interval(period).capture() {
         Ok(s) => s,
         Err(e) => {
             println!("\r{}", e.to_string().red());

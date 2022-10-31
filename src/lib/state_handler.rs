@@ -70,7 +70,7 @@ pub mod state_handler {
                 State::Pausing => State::Pausing,
                 State::Paused => State::Paused,
                 State::Stopped => State::Stopped,
-                State::Dead => State::Dead
+                State::Dead => State::Dead // TODO: check if really useful
             }
         }
 

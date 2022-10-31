@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -7,6 +7,10 @@ pub struct Args {
     /// Name of the capture device
     #[arg(short, long)]
     pub name: Option<String>,
+
+    /// Period for report writing (in seconds)
+    #[arg(short, long)]
+    pub period: Option<u64>,
 
     /// ID of the capture device
     /// (ignored if a name is specified with -n)

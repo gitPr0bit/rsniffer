@@ -12,6 +12,9 @@ pub mod report {
     const GB: usize = 1_000_000_000;
     const _GB: usize = GB - 1;
 
+    pub const NFIELDS: u32 = 9;
+    pub const WPERIOD: u64 = 5;
+
     #[derive(Debug)]
     pub struct TrafficDetail {
         pub src_ip: String,
@@ -64,7 +67,8 @@ pub mod report {
 
     pub struct TrafficReport {
         traffic: HashMap<String, TrafficDetail>,
-        file_path: String
+        file_path: String,
+        sorting: String
     }
 
     impl Default for TrafficReport {
@@ -78,7 +82,8 @@ pub mod report {
         pub fn new(file_path: String) -> Self {
             Self {
                 traffic: HashMap::new(),
-                file_path
+                file_path,
+                sorting: String::new()
             }
         }
 
@@ -110,8 +115,7 @@ pub mod report {
 
 
             // TODO: implement sorting for every field of the table
-            let mut sorted: Vec<_> = self.traffic.iter().collect();
-            sorted.sort_by(|a, b| a.1.bytes.cmp(&b.1.bytes));
+            let sorted = self.sort();
 
             for detail in sorted {
                 table.add_row(row![detail.1.src_ip, detail.1.dst_ip, detail.1.src_port, detail.1.dst_port, 
@@ -137,6 +141,76 @@ pub mod report {
                         })
                         .or_insert( ndetail );
             }
+        }
+
+        pub fn set_sorting(&mut self, str: String) -> bool {
+            if str.len() != 2 { return false };
+
+            let field = str.chars().nth(0).unwrap().to_digit(10).unwrap_or_default();
+            if field >= NFIELDS { return false; }
+
+            let direction = str.chars().nth(1).unwrap();
+            if direction != 'U' && direction != 'D' { return false; }
+
+            self.sorting = str;
+            return true;
+        }
+
+        fn sort(&self) -> Vec<(&std::string::String, &TrafficDetail)> {
+            let field = self.sorting.chars().nth(0).unwrap();
+            let direction = self.sorting.chars().nth(1).unwrap();
+
+            let mut sorted: Vec<_> = self.traffic.iter().collect();
+            match field {
+                '0' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.src_ip.cmp(&b.1.src_ip)),
+                    'D' => sorted.sort_by(|a, b| b.1.src_ip.cmp(&a.1.src_ip)),
+                    _ => {}
+                },
+                '1' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.dst_ip.cmp(&b.1.dst_ip)),
+                    'D' => sorted.sort_by(|a, b| b.1.dst_ip.cmp(&a.1.dst_ip)),
+                    _ => {}
+                },
+                '2' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.src_port.cmp(&b.1.src_port)),
+                    'D' => sorted.sort_by(|a, b| b.1.src_port.cmp(&a.1.src_port)),
+                    _ => {}
+                },
+                '3' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.dst_port.cmp(&b.1.dst_port)),
+                    'D' => sorted.sort_by(|a, b| b.1.dst_port.cmp(&a.1.dst_port)),
+                    _ => {}
+                },
+                '4' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.protocol.cmp(&b.1.protocol)),
+                    'D' => sorted.sort_by(|a, b| b.1.protocol.cmp(&a.1.protocol)),
+                    _ => {}
+                },
+                '5' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.bytes.cmp(&b.1.bytes)),
+                    'D' => sorted.sort_by(|a, b| b.1.bytes.cmp(&a.1.bytes)),
+                    _ => {}
+                },
+                '6' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.npackets.cmp(&b.1.npackets)),
+                    'D' => sorted.sort_by(|a, b| b.1.npackets.cmp(&a.1.npackets)),
+                    _ => {}
+                },
+                '7' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.first_ts.cmp(&b.1.first_ts)),
+                    'D' => sorted.sort_by(|a, b| b.1.first_ts.cmp(&a.1.first_ts)),
+                    _ => {}
+                },
+                '8' => match direction {
+                    'U' => sorted.sort_by(|a, b| a.1.last_ts.cmp(&b.1.last_ts)),
+                    'D' => sorted.sort_by(|a, b| b.1.last_ts.cmp(&a.1.last_ts)),
+                    _ => {}
+                },
+                _ => {}
+            }
+            
+            sorted
         }
     }
 

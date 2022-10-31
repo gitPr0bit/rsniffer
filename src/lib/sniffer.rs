@@ -2,14 +2,13 @@ pub mod sniffer {
     use core::time;
     use pcap::{Device, Error};
     use std::{sync::{Arc, Mutex}, thread};
-    use crate::lib::{capture::capture::CaptureWrapper, report::report::TrafficReport, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
-
-    const DEFAULT_INTERVAL: u64 = 5;
+    use crate::lib::{capture::capture::CaptureWrapper, report::{report::{TrafficReport, WPERIOD}, self}, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
 
     pub struct SnifferBuilder {
         device: String,
         filter: String,
-        interval: u64
+        interval: u64,
+        sort: String
     }
 
     impl SnifferBuilder {
@@ -31,17 +30,30 @@ pub mod sniffer {
             self
         }
 
+        pub fn sort(mut self, sort: String) -> SnifferBuilder {
+            // Set the name on the builder itself, and return the builder by value.
+            self.sort = sort;
+            self
+        }
+
         pub fn capture(self) -> Result<Sniffer, Error> {
+            let mut report = TrafficReport::default();
+            if !self.sort.is_empty() {
+                if report.set_sorting(String::from(&self.sort)) == false {
+                    panic!("Invalid sorting criteria");
+                }
+            }
+
             let sniffer = Sniffer {
                 device: self.device,
                 interval: self.interval,
-                report: Arc::new(Mutex::new(TrafficReport::default())), 
+                report: Arc::new(Mutex::new(report)), 
                 state: Arc::new(StateHandler::new())
             };
 
             match sniffer.start_capture() {
                 Ok(_) => {},
-                Err(e) => { return Err(Error::from(e)); }
+                Err(e) => { return Err(e); }
             }
             sniffer.start_report();
             
@@ -61,7 +73,8 @@ pub mod sniffer {
             SnifferBuilder {
                 device: String::new(),
                 filter: String::new(),
-                interval: DEFAULT_INTERVAL
+                interval: WPERIOD,
+                sort: String::new()
             }
         }
 
@@ -143,7 +156,6 @@ pub mod sniffer {
                     thread::sleep(duration);
                     let mut rh = rh_report.lock().unwrap();
         
-                    // println!("\nWriting report to file...");
                     rh.write();
                 }
             });
