@@ -1,10 +1,10 @@
 pub mod parser {
-    use chrono::{DateTime, Utc, NaiveDateTime};
+    use chrono::{NaiveDateTime, Local, TimeZone};
     use pcap::Device;
     use pnet::packet::{
         ethernet::{EtherTypes, EthernetPacket},
         ip::IpNextHeaderProtocols,
-        ipv4::{Ipv4Packet},
+        ipv4::Ipv4Packet,
         udp::UdpPacket,
         tcp::TcpPacket,
         Packet, ipv6::Ipv6Packet
@@ -25,10 +25,13 @@ pub mod parser {
     fn parse_timestamp(packet: &pcap::Packet, res: &mut TrafficDetail) {
         // Get timestamp from header
         let ts = packet.header.ts.tv_sec;
-        let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts.into(), 0), Utc);
+        
+        // Here choice has been made to use Local time rather than UTC (replace with Utc.from_...(...) to get UTC)
+        let dt = Local.from_utc_datetime(&NaiveDateTime::from_timestamp(ts.into(), 0));
 
-        res.first_ts = dt.to_string();
-        res.last_ts = dt.to_string();
+        let parsed = dt.format("%Y-%m-%d %H:%M:%S").to_string();
+        res.first_ts = String::from(&parsed);
+        res.last_ts = String::from(&parsed);
     }
 
     fn parse_layer2(packet: &pcap::Packet, res: &mut TrafficDetail) {

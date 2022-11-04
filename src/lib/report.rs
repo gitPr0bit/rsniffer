@@ -1,6 +1,6 @@
 pub mod report {
     use std::{collections::HashMap, fs::File, path::Path, io::Error, io::Write};
-    use chrono::Utc;
+    use chrono::Local;
     use prettytable::{Table, format, row};
 
     /// bytes size for 1 kilobyte
@@ -126,9 +126,9 @@ pub mod report {
             }
 
 
-            let dt = Utc::now();
+            let dt = Local::now();
             // let time_stamp = format!("\n\rLast update: {}", dt);
-            write!(&mut file, "\n\rLast update: {}", dt).ok();
+            write!(&mut file, "\n\rLast update: {}", dt.format("%Y-%m-%d %H:%M:%S %Z").to_string()).ok();
             std::io::stdout().flush().unwrap();
 
             Ok(())
