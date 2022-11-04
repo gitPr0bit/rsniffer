@@ -72,7 +72,7 @@ pub mod parser {
                 res.src_port = packet.get_source().to_string();
                 res.dst_port = packet.get_destination().to_string();
                 res.bytes = usize::from(packet.payload().len());
-                res.protocol = String::from("UDP");
+                res.protocols = String::from("UDP");
             },
             None => res.handled = false
         }
@@ -90,7 +90,7 @@ pub mod parser {
                 res.src_port = packet.get_source().to_string();
                 res.dst_port = packet.get_destination().to_string();
                 res.bytes = usize::from(packet.payload().len());
-                res.protocol = String::from("TCP");
+                res.protocols = String::from("TCP");
             },
             None => res.handled = false
         }

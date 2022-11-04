@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread;
 use crate::args::Args;
-use crate::lib::sniffer::{sniffer::Sniffer};
+use crate::lib::sniffer::sniffer::Sniffer;
 use clap::Parser;
 use crossterm::style::Stylize;
 use crossterm::{cursor, terminal, queue, style};
@@ -63,21 +63,25 @@ fn main() {
         }
     };
 
+    let out = match &args.output {
+        Some(o) => Some(o.to_string()),
+        None => None
+    };
+
     let sort = match &args.sort {
-        Some(s) => s.to_string(),
-        None => String::new()
+        Some(s) => Some(s.to_string()),
+        None => None
     };
 
     let period = match &args.period {
         Some(s) => *s,
-        None => 1
+        None => 3
     };
 
-
-    let sniffer = match Sniffer::builder().device(String::from(&device)).sort(sort).interval(period).capture() {
+    let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).sort(sort).interval(period).capture() {
         Ok(s) => s,
         Err(e) => {
-            println!("\r{}", e.to_string().red());
+            println!("\r{}", e.to_string());
             cleanup_terminal();
             return;
         }

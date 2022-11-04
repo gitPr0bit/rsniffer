@@ -8,6 +8,10 @@ pub struct Args {
     #[arg(short, long)]
     pub name: Option<String>,
 
+    /// Output file
+    #[arg(short, long, default_value="rsniffer_report.txt")]
+    pub output: Option<String>,
+
     /// Period for report writing (in seconds)
     #[arg(short, long)]
     pub period: Option<u64>,

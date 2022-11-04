@@ -1,26 +1,33 @@
 pub mod sniffer {
     use core::time;
     use pcap::{Device, Error};
-    use std::{sync::{Arc, Mutex}, thread};
-    use crate::lib::{capture::capture::CaptureWrapper, report::{report::{TrafficReport, WPERIOD}, self}, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
+    use std::{sync::{Arc, Mutex}, thread, io::Error as IOError};
+    use crate::lib::{capture::capture::CaptureWrapper, report::report::{TrafficReport, WPERIOD, DEFAULT_OUT}, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
 
     pub struct SnifferBuilder {
         device: String,
+        out: Option<String>,
         filter: String,
         interval: u64,
-        sort: String
+        sorting: Option<String>
     }
 
     impl SnifferBuilder {
         pub fn device(mut self, dev: String) -> SnifferBuilder {
-            // Set the name on the builder itself, and return the builder by value.
+            // Set the device on the builder itself, and return the builder by value.
             self.device = if dev.is_empty() { CaptureWrapper::default_device() } else { dev };
             self
         }
 
         pub fn interval(mut self, interval: u64) -> SnifferBuilder {
-            // Set the name on the builder itself, and return the builder by value.
+            // Set the interval on the builder itself, and return the builder by value.
             self.interval = interval;
+            self
+        }
+
+        pub fn out(mut self, out_path: Option<String>) -> SnifferBuilder {
+            // Set the output file on the builder itself, and return the builder by value.
+            self.out = out_path;
             self
         }
 
@@ -30,18 +37,21 @@ pub mod sniffer {
             self
         }
 
-        pub fn sort(mut self, sort: String) -> SnifferBuilder {
+        pub fn sort(mut self, sort: Option<String>) -> SnifferBuilder {
             // Set the name on the builder itself, and return the builder by value.
-            self.sort = sort;
+            self.sorting = sort;
             self
         }
 
-        pub fn capture(self) -> Result<Sniffer, Error> {
-            let mut report = TrafficReport::default();
-            if !self.sort.is_empty() {
-                if report.set_sorting(String::from(&self.sort)) == false {
-                    panic!("Invalid sorting criteria");
-                }
+        pub fn capture(self) -> Result<Sniffer, CustomError> {
+            let mut report =  match &self.out {
+                Some(file_path) => TrafficReport::new(String::from(file_path)),
+                None => TrafficReport::default()
+            };
+
+            // Set sorting criteria for report
+            if self.sorting.is_some() && report.set_sorting(self.sorting) == false {
+                panic!("Invalid sorting criteria");
             }
 
             let sniffer = Sniffer {
@@ -51,11 +61,19 @@ pub mod sniffer {
                 state: Arc::new(StateHandler::new())
             };
 
-            match sniffer.start_capture() {
-                Ok(_) => {},
-                Err(e) => { return Err(e); }
+            if let Err(e) = sniffer.start_capture() {
+                return Err(CustomError::new(e.to_string()));
             }
-            sniffer.start_report();
+
+            if let Err(_) = sniffer.start_report() {
+                let out = match &self.out {
+                    Some(out_file) => String::from(out_file),
+                    None => format!(" {}", DEFAULT_OUT)
+                };
+                let message = format!("Something went wrong trying to write the report to{}. \
+                    Please check that a valid path was specified and that you have write permissions for the target directory.", out);
+                return Err(CustomError::new(message)); 
+            }
             
             Ok(sniffer)
         }
@@ -74,7 +92,8 @@ pub mod sniffer {
                 device: String::new(),
                 filter: String::new(),
                 interval: WPERIOD,
-                sort: String::new()
+                sorting: None,
+                out: None
             }
         }
 
@@ -138,10 +157,15 @@ pub mod sniffer {
             Ok(())
         }
 
-        fn start_report(&self) {
+        fn start_report(&self) -> Result<(), IOError> {
             let sh_report = Arc::clone(&self.state);
             let rh_report = Arc::clone(&self.report);
             let interval = self.interval;
+
+            let res = self.report.lock().unwrap().write();
+            if res.is_err() {
+                return res;
+            }
             
             thread::spawn(move || {
                 let duration = time::Duration::from_secs(interval);
@@ -159,6 +183,8 @@ pub mod sniffer {
                     rh.write();
                 }
             });
+
+            Ok(())
         }
 
         pub fn device(&self) -> String {
@@ -192,6 +218,23 @@ pub mod sniffer {
     impl Drop for StateRAII {
         fn drop(&mut self) {
             self.state.set_state(State::Dead);
+        }
+    }
+    
+    #[derive(Debug)]
+    pub struct CustomError {
+        msg: String
+    }
+
+    impl CustomError {
+        pub fn new(str: String) -> Self {
+            Self {
+                msg: str
+            }
+        }
+
+        pub fn to_string(&self) -> String {
+            String::from(&self.msg)
         }
     }
 }
