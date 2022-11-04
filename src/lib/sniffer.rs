@@ -7,7 +7,7 @@ pub mod sniffer {
     pub struct SnifferBuilder {
         device: String,
         out: Option<String>,
-        filter: String,
+        filter: Option<String>,
         interval: u64,
         sorting: Option<String>
     }
@@ -31,7 +31,7 @@ pub mod sniffer {
             self
         }
 
-        pub fn filter(mut self, filter: String) -> SnifferBuilder {
+        pub fn filter(mut self, filter: Option<String>) -> SnifferBuilder {
             // Set the name on the builder itself, and return the builder by value.
             self.filter = filter;
             self
@@ -57,6 +57,7 @@ pub mod sniffer {
             let sniffer = Sniffer {
                 device: self.device,
                 interval: self.interval,
+                filter: self.filter,
                 report: Arc::new(Mutex::new(report)), 
                 state: Arc::new(StateHandler::new())
             };
@@ -83,14 +84,15 @@ pub mod sniffer {
         device: String,
         report: Arc<Mutex<TrafficReport>>,
         state: Arc<StateHandler>,
-        interval: u64
+        interval: u64,
+        filter: Option<String>
     }
 
     impl Sniffer {
         pub fn builder() -> SnifferBuilder {
             SnifferBuilder {
                 device: String::new(),
-                filter: String::new(),
+                filter: None,
                 interval: WPERIOD,
                 sorting: None,
                 out: None
@@ -116,7 +118,14 @@ pub mod sniffer {
         fn start_capture(&self) -> Result<(), Error> {
             let sh_capture = Arc::clone(&self.state);
             let rh_capture = Arc::clone(&self.report);
-            let mut capture = CaptureWrapper::new(String::from(&self.device));
+
+            // Create filter that can be moved
+            let filter = match &self.filter {
+                Some(f) => Some(String::from(f)),
+                None => None
+            };
+
+            let mut capture = CaptureWrapper::new(String::from(&self.device), filter);
             match capture.start_capture() {
                 Ok(_) => {},
                 Err(e) => {return Err(e);}

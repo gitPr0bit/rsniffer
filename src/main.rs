@@ -78,7 +78,12 @@ fn main() {
         None => 3
     };
 
-    let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).sort(sort).interval(period).capture() {
+    let filter = match &args.filter {
+        Some(f) => Some(f.to_string()),
+        None => None
+    };
+
+    let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).filter(filter).sort(sort).interval(period).capture() {
         Ok(s) => s,
         Err(e) => {
             println!("\r{}", e.to_string());

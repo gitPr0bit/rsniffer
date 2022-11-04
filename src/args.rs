@@ -12,6 +12,10 @@ pub struct Args {
     #[arg(short, long, default_value="rsniffer_report.txt")]
     pub output: Option<String>,
 
+    /// Capture filter
+    #[arg(short, long, default_value=None)]
+    pub filter: Option<String>,
+
     /// Period for report writing (in seconds)
     #[arg(short, long)]
     pub period: Option<u64>,

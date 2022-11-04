@@ -3,14 +3,16 @@ pub mod capture {
 
     pub struct CaptureWrapper {
         device: String,
+        filter: Option<String>,
         acapture: Option<Capture<Active>>,
         running: bool
     }
 
     impl CaptureWrapper {
-        pub fn new(dev: String) -> Self {
+        pub fn new(dev: String, filter: Option<String>) -> Self {
             Self { 
                 device: Self::sanitize_device(dev),
+                filter: filter,
                 acapture: None,
                 running: false
             }
@@ -22,7 +24,7 @@ pub mod capture {
                 return Ok(());
             }
 
-            let capture = match Capture::from_device(self.device.as_str()) {
+            let mut capture = match Capture::from_device(self.device.as_str()) {
                 Ok(cap) => match cap.promisc(true).immediate_mode(true).open() {
                     Ok(active_cap) => match active_cap.setnonblock() { // TODO: try directly replacing open() with setnonblock() to see if it opens too
                         Ok(acap) => acap,
@@ -32,6 +34,11 @@ pub mod capture {
                 },
                 Err(e) => { return Err(e); }
             };
+
+            if self.filter.is_some() {
+                let filter = String::from(self.filter.as_ref().unwrap());
+                capture.filter(&filter, true).ok(); // TODO: handle possible errors
+            }
 
             self.acapture = Some(capture);
             self.running = true;
