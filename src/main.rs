@@ -2,11 +2,11 @@ use core::time;
 use std::io::{self, Write};
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread;
-use crate::args::Args;
-use crate::lib::sniffer::sniffer::Sniffer;
+use crate::lib::sniffer::Sniffer;
 use clap::Parser;
 use crossterm::style::Stylize;
 use crossterm::{cursor, terminal, queue, style};
+use args::Args;
 
 mod lib;
 mod args;
