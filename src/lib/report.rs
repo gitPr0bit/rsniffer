@@ -14,7 +14,7 @@ pub mod report {
     const _GB: usize = GB - 1;
 
     pub const NFIELDS: u32 = 9;
-    pub const WPERIOD: u64 = 5;
+    pub const TIME_INTERVAL: u64 = 5;
     pub const DEFAULT_OUT: &str = "rsniffer_report.txt";
 
     #[derive(Debug)]

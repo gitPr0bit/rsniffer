@@ -2,7 +2,7 @@ pub mod sniffer {
     use core::time;
     use pcap::{Device, Error};
     use std::{sync::{Arc, Mutex}, thread, io::Error as IOError};
-    use crate::lib::{capture::capture::CaptureWrapper, report::report::{TrafficReport, WPERIOD, DEFAULT_OUT}, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
+    use crate::lib::{capture::capture::CaptureWrapper, report::report::{TrafficReport, TIME_INTERVAL, DEFAULT_OUT}, state_handler::state_handler::{State, StateHandler}, parser::parser::{parse, parse_device}};
 
     pub struct SnifferBuilder {
         device: String,
@@ -93,7 +93,7 @@ pub mod sniffer {
             SnifferBuilder {
                 device: String::new(),
                 filter: None,
-                interval: WPERIOD,
+                interval: TIME_INTERVAL,
                 sorting: None,
                 out: None
             }

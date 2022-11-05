@@ -29,14 +29,12 @@ const HELP: &str = r#"
 
 
 fn main() {
-    let mut out = io::stdout();
     let args = Args::parse();
-    let broken = false;
 
     setup_terminal();
     print_help().ok();
 
-    if args.devices {
+    if args.list_devices {
         let str = "Available devices:";
         println!("\r{}", str);
         for d in Sniffer::printable_devices() {
@@ -45,7 +43,7 @@ fn main() {
         return;
     }
 
-    let device = match &args.name {
+    let device = match &args.device {
         Some(name) => String::from(name),
         None => {
             let devices = Sniffer::devices();
@@ -73,7 +71,7 @@ fn main() {
         None => None
     };
 
-    let period = match &args.period {
+    let interval = match &args.time_interval {
         Some(s) => *s,
         None => 3
     };
@@ -83,7 +81,7 @@ fn main() {
         None => None
     };
 
-    let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).filter(filter).sort(sort).interval(period).capture() {
+    let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).filter(filter).sort(sort).interval(interval).capture() {
         Ok(s) => s,
         Err(e) => {
             println!("\r{}", e.to_string());
