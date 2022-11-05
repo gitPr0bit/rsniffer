@@ -36,7 +36,9 @@ impl CaptureWrapper {
 
         if self.filter.is_some() {
             let filter = String::from(self.filter.as_ref().unwrap());
-            capture.filter(&filter, true).ok(); // TODO: handle possible errors
+            if capture.filter(&filter, true).is_err() {
+                self.filter = Some(format!("{} [{}]", filter, "ignored because invalid"));
+            };
         }
 
         self.acapture = Some(capture);
@@ -75,6 +77,13 @@ impl CaptureWrapper {
 
     pub fn default_device() -> String {
         Device::lookup().unwrap().unwrap().name
+    }
+
+    pub fn filter(&self) -> Option<String> {
+        match &self.filter {
+            Some(f) => Some(String::from(f)),
+            None => None
+        }
     }
 
     fn sanitize_device(dev: String) -> String {

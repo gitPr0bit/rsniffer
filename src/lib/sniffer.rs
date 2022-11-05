@@ -1,7 +1,7 @@
 use super::capture::CaptureWrapper;
 use super::parser::{parse, parse_device};
 use super::state_handler::{State, StateHandler};
-use super::report::{TrafficReport, TIME_INTERVAL, DEFAULT_OUT};
+use super::report::{TrafficReport, DEFAULT_INTERVAL, DEFAULT_OUT};
 
 use core::time;
 use pcap::{Device, Error};
@@ -57,7 +57,21 @@ impl SnifferBuilder {
             panic!("Invalid sorting criteria");
         }
 
-        let sniffer = Sniffer {
+        // Give to report details about capture configuration
+        let filter = match &self.filter {
+            Some(f) => Some(String::from(f)),
+            None => None
+        };
+        report.set_filter(filter);
+        report.set_interval(self.interval);
+
+        for (i, d) in Sniffer::devices().iter().enumerate() {
+            if d.name == self.device {
+                report.set_device((i, String::from(&d.name)))
+            }
+        }
+
+        let mut sniffer = Sniffer {
             device: self.device,
             interval: self.interval,
             filter: self.filter,
@@ -96,7 +110,7 @@ impl Sniffer {
         SnifferBuilder {
             device: String::new(),
             filter: None,
-            interval: TIME_INTERVAL,
+            interval: DEFAULT_INTERVAL,
             sorting: None,
             out: None
         }
@@ -105,7 +119,7 @@ impl Sniffer {
     pub fn devices() -> Vec<Device> {
         match Device::list() {
             Ok(devices) => devices,
-            Err(e) => vec![]
+            Err(_) => vec![]
         }
     }
 
@@ -118,7 +132,7 @@ impl Sniffer {
     }
 
 
-    fn start_capture(&self) -> Result<(), Error> {
+    fn start_capture(&mut self) -> Result<(), Error> {
         let sh_capture = Arc::clone(&self.state);
         let rh_capture = Arc::clone(&self.report);
 
@@ -130,9 +144,14 @@ impl Sniffer {
 
         let mut capture = CaptureWrapper::new(String::from(&self.device), filter);
         match capture.start_capture() {
-            Ok(_) => {},
+            Ok(_) => { if capture.filter().is_none() { self.filter = None; } },
             Err(e) => {return Err(e);}
         }
+
+        // Update filter in report
+        let mut report_handler = rh_capture.lock().unwrap();
+        report_handler.set_filter(capture.filter());
+        drop(report_handler);
 
         thread::spawn(move || {
             let _raii = StateRAII{ state: Arc::clone(&sh_capture) };
@@ -192,7 +211,7 @@ impl Sniffer {
                 thread::sleep(duration);
                 let mut rh = rh_report.lock().unwrap();
     
-                rh.write();
+                rh.write().ok();
             }
         });
 
