@@ -161,9 +161,9 @@ impl Sniffer {
                         Ok(_) => {},
                         Err(e) => { 
                             // sh_capture.set_state(State::Stopped);
-                            println!("{:?}", e);
+                            eprintln!("{:?}", e);
                             break;
-                            }
+                        }
                     },
                     State::Pausing | State::Paused => {
                         capture.stop_capture();
@@ -210,7 +210,7 @@ impl Sniffer {
     
                 let mut rh = rh_report.lock().unwrap();
                 rh.write().ok();
-                
+
                 thread::sleep(duration);
             }
         });

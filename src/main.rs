@@ -52,7 +52,7 @@ fn main() {
                     String::from(&devices[id].name)
                 } else {
                     let error_msg = "\rInvalid ID! Falling back to default device...";
-                    println!("{}", error_msg.magenta());
+                    eprintln!("{}", error_msg.magenta());
                     String::new()
                 },
                 None => String::new()
@@ -84,7 +84,7 @@ fn main() {
     let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).filter(filter).sort(sort).interval(interval).capture() {
         Ok(s) => s,
         Err(e) => {
-            println!("\r{}", e.to_string());
+            eprintln!("\r{}", e.to_string());
             cleanup_terminal();
             return;
         }
@@ -93,7 +93,7 @@ fn main() {
     println!("\rUsing device {}", sniffer.device());
 
     if let Err(e) = print_events(sniffer) {
-        println!("\rError: {:?}\r", e);
+        eprintln!("\rError: {:?}\r", e);
     }
 
     cleanup_terminal();
@@ -206,6 +206,6 @@ fn cleanup_terminal() {
 
     terminal::disable_raw_mode().unwrap();
 
-    println!("\n\nBye bye\n");
+    println!("\n\nExiting... Bye bye!\n");
     execute!(stdout, cursor::Show).unwrap();
 }
