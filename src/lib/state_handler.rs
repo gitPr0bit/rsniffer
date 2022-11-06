@@ -9,8 +9,7 @@ pub enum State {
     Running,
     Pausing,
     Paused,
-    Stopped,
-    Dead
+    Stopped
 }
 
 impl StateHandler {
@@ -56,8 +55,7 @@ impl StateHandler {
             State::Running => State::Running,
             State::Pausing => State::Pausing,
             State::Paused => State::Paused,
-            State::Stopped => State::Stopped,
-            State::Dead => State::Dead // TODO: check if really useful
+            State::Stopped => State::Stopped
         }
     }
 
@@ -69,11 +67,7 @@ impl StateHandler {
                 *state = State::Pausing
             },
             State::Paused => self.pause(),
-            State::Stopped => self.stop(),
-            State::Dead => { 
-                let mut state = self.mtx.lock().unwrap();
-                *state = State::Dead 
-            }
+            State::Stopped => self.stop()
         }
     }
 }

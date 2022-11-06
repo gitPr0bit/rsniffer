@@ -154,7 +154,6 @@ impl Sniffer {
         drop(report_handler);
 
         thread::spawn(move || {
-            let _raii = StateRAII{ state: Arc::clone(&sh_capture) };
             loop {
                 match sh_capture.state() {
                     State::Running => match capture.start_capture() {
@@ -169,7 +168,7 @@ impl Sniffer {
                         capture.stop_capture();
                         sh_capture.set_state(State::Paused);
                     },
-                    State::Stopped | State::Dead => {
+                    State::Stopped => {
                         capture.stop_capture();
                         break
                     }
@@ -204,7 +203,7 @@ impl Sniffer {
             loop {
                 match sh_report.state() {
                     State::Pausing | State::Paused => sh_report.set_state(State::Paused),
-                    State::Stopped | State::Dead => break,
+                    State::Stopped => break,
                     _ => {}
                 }
     
@@ -232,23 +231,6 @@ impl Sniffer {
 
     pub fn stop(&self) {
         self.state.set_state(State::Stopped);
-    }
-
-    pub fn dead(&self) -> bool {
-        match self.state.state() {
-            State::Dead => true,
-            _ => false
-        }
-    }
-}
-
-struct StateRAII {
-    state: Arc<StateHandler>
-}
-
-impl Drop for StateRAII {
-    fn drop(&mut self) {
-        self.state.set_state(State::Dead);
     }
 }
 
