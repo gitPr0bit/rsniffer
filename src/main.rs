@@ -1,14 +1,14 @@
 use core::time;
-use std::io::{self, Write};
-use std::sync::mpsc::{self, Sender, Receiver};
-use std::thread;
-use crate::lib::sniffer::Sniffer;
-use clap::Parser;
-use crossterm::style::Stylize;
-use crossterm::{cursor, terminal, queue, style};
 use args::Args;
+use std::thread;
+use clap::Parser;
+use std::io::{self, Write};
+use crossterm::style::Stylize;
+use std::sync::mpsc::{self, Sender, Receiver};
+use crossterm::{cursor, terminal, queue, style};
+use crate::sniffer::Sniffer;
 
-mod lib;
+mod sniffer;
 mod args;
 
 use crossterm::{

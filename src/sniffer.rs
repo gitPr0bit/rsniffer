@@ -3,10 +3,15 @@
 //! to a file of choice. The library also gives the ability to pause, resume or stop
 //! the capture at any time.
 
-use super::capture::CaptureWrapper;
-use super::parser::{parse, parse_device};
-use super::state_handler::{State, StateHandler};
-use super::report::{TrafficReport, DEFAULT_INTERVAL, DEFAULT_OUT};
+mod report;
+mod parser;
+mod capture;
+mod state_handler;
+
+use capture::CaptureWrapper;
+use parser::{parse, parse_device};
+use state_handler::{State, StateHandler};
+use report::{TrafficReport, DEFAULT_INTERVAL, DEFAULT_OUT};
 
 use core::time;
 use pcap::{Device, Error};
