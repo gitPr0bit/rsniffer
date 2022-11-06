@@ -208,10 +208,10 @@ impl Sniffer {
                     _ => {}
                 }
     
-                thread::sleep(duration);
                 let mut rh = rh_report.lock().unwrap();
-    
                 rh.write().ok();
+                
+                thread::sleep(duration);
             }
         });
 
