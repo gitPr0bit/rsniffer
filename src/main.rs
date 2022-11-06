@@ -11,8 +11,6 @@ use args::Args;
 mod lib;
 mod args;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 use crossterm::{
     event::{
         read, Event, KeyCode,
@@ -24,7 +22,7 @@ use crossterm::{
 const HELP: &str = r#"
  - Hit "p" to pause;
  - Hit "r" to resume;
- - Use Esc or hit "q" to quit;
+ - Hit Esc or hit "q" to quit;
 "#;
 
 

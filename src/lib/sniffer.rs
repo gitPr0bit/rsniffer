@@ -1,3 +1,8 @@
+//! This crate is aimed at generating a textual report of the network traffic
+//! captured by a chosen device (in promiscuous mode), with chosen capture criteria,
+//! to a file of choice. The library also gives the ability to pause, resume or stop
+//! the capture at any time.
+
 use super::capture::CaptureWrapper;
 use super::parser::{parse, parse_device};
 use super::state_handler::{State, StateHandler};
@@ -16,32 +21,32 @@ pub struct SnifferBuilder {
 }
 
 impl SnifferBuilder {
+    /// Sets the device on the builder itself, and returns the builder by value.
     pub fn device(mut self, dev: String) -> SnifferBuilder {
-        // Set the device on the builder itself, and return the builder by value.
         self.device = if dev.is_empty() { CaptureWrapper::default_device() } else { dev };
         self
     }
 
+    /// Sets the time interval on the builder itself, and returns the builder by value.
     pub fn interval(mut self, interval: u64) -> SnifferBuilder {
-        // Set the interval on the builder itself, and return the builder by value.
         self.interval = interval;
         self
     }
 
+    /// Sets the output file on the builder itself, and returns the builder by value.
     pub fn out(mut self, out_path: Option<String>) -> SnifferBuilder {
-        // Set the output file on the builder itself, and return the builder by value.
         self.out = out_path;
         self
     }
 
+    /// Sets the filter on the builder itself, and returns the builder by value.
     pub fn filter(mut self, filter: Option<String>) -> SnifferBuilder {
-        // Set the name on the builder itself, and return the builder by value.
         self.filter = filter;
         self
     }
 
+    /// Sets the sorting criteria on the builder itself, and returns the builder by value.
     pub fn sort(mut self, sort: Option<String>) -> SnifferBuilder {
-        // Set the name on the builder itself, and return the builder by value.
         self.sorting = sort;
         self
     }
@@ -54,7 +59,8 @@ impl SnifferBuilder {
 
         // Set sorting criteria for report
         if self.sorting.is_some() && report.set_sorting(self.sorting) == false {
-            panic!("Invalid sorting criteria");
+            let msg = String::from("Invalid sorting criteria!");
+            return Err(CustomError::new(msg));
         }
 
         // Give to report details about capture configuration
