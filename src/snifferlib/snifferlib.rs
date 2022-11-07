@@ -37,9 +37,9 @@ impl SnifferBuilder {
     /// 
     /// #Example
     /// ```
-    /// use sniffer::Sniffer;
+    /// use snifferlib::Sniffer;
     /// 
-    /// let mut device_name = Some(String::from("eth0"));
+    /// let mut device_name = String::from("eth0");
     /// 
     /// let mut builder = Sniffer::builder();
     /// builder = builder.device(device_name);

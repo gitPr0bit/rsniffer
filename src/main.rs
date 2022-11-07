@@ -6,9 +6,8 @@ use std::io::{self, Write};
 use crossterm::style::Stylize;
 use std::sync::mpsc::{self, Sender, Receiver};
 use crossterm::{cursor, terminal, queue, style};
-use crate::sniffer::Sniffer;
+use snifferlib::Sniffer;
 
-mod sniffer;
 mod args;
 
 use crossterm::{
