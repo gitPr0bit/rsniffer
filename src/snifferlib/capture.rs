@@ -25,7 +25,7 @@ impl CaptureWrapper {
 
         let mut capture = match Capture::from_device(self.device.as_str()) {
             Ok(cap) => match cap.promisc(true).immediate_mode(true).open() {
-                Ok(active_cap) => match active_cap.setnonblock() { // TODO: try directly replacing open() with setnonblock() to see if it opens too
+                Ok(active_cap) => match active_cap.setnonblock() {
                     Ok(acap) => acap,
                     Err(e) => { return Err(e); }
                 },
