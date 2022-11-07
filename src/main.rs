@@ -22,7 +22,7 @@ use crossterm::{
 const HELP: &str = r#"
  - Hit "p" to pause;
  - Hit "r" to resume;
- - Hit Esc or hit "q" to quit;
+ - Hit Esc or "q" to quit;
 "#;
 
 #[doc(hidden)]
@@ -33,11 +33,18 @@ fn main() {
     print_help().ok();
 
     if args.list_devices {
-        let str = "Available devices:";
-        println!("\r{}", str);
-        for d in Sniffer::printable_devices() {
-            println!("\n\r{}", d);
+        println!("\rAvailable devices:");
+
+        match Sniffer::printable_devices() {
+            Ok(devices) => {
+                for d in devices {
+                    println!("\n\r{}", d);
+                }
+            },
+            Err(e) => eprintln!("{}", e.to_string())
         }
+
+        cleanup_terminal();
         return;
     }
 
@@ -46,7 +53,11 @@ fn main() {
     let device = match &args.device {
         Some(name) => String::from(name),
         None => {
-            let devices = Sniffer::devices();
+            let devices = match Sniffer::devices() {
+                Ok(devs) => devs,
+                Err(e) => { err_and_clean(e.to_string()); return; }
+            };
+
             let dev = match args.id {
                 Some(id) => if id < devices.len() {
                     String::from(&devices[id].name)
@@ -84,8 +95,7 @@ fn main() {
     let sniffer = match Sniffer::builder().device(String::from(&device)).out(out).filter(filter).sort(sort).interval(interval).capture() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("\r{}", e.to_string());
-            cleanup_terminal();
+            err_and_clean(e.to_string());
             return;
         }
     };
@@ -93,7 +103,7 @@ fn main() {
     println!("\rUsing device {}", sniffer.device());
 
     if let Err(e) = print_events(sniffer) {
-        eprintln!("\rError: {:?}\r", e);
+        eprintln!("\n\rError: {:?}\r", e);
     }
 
     cleanup_terminal();
@@ -211,6 +221,12 @@ fn cleanup_terminal() {
 
     terminal::disable_raw_mode().unwrap();
 
-    println!("\n\nExiting... Bye bye!\n");
+    println!("\n\nExiting...\n");
     execute!(stdout, cursor::Show).unwrap();
+}
+
+#[doc(hidden)]
+fn err_and_clean(err: String) {
+    eprintln!("\n\rAn error occurred: {}", err);
+    cleanup_terminal();
 }

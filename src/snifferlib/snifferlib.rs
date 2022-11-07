@@ -24,6 +24,7 @@ use core::time;
 use pcap::{Device, Error};
 use std::{sync::{Arc, Mutex}, thread, io::Error as IOError};
 
+/// Builder used to configure, build and start a Sniffer
 pub struct SnifferBuilder {
     device: String,
     out: Option<String>,
@@ -36,7 +37,7 @@ impl SnifferBuilder {
     /// Sets the device name on the builder itself, and returns the builder by value.
     /// If an empty String is given, relies on pcap to set default device for the capture.
     /// 
-    /// #Example
+    /// #Examples
     /// ```
     /// use snifferlib::Sniffer;
     /// 
@@ -44,6 +45,22 @@ impl SnifferBuilder {
     /// 
     /// let mut builder = Sniffer::builder();
     /// builder = builder.device(device_name);
+    /// ```
+    /// 
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// let mut devices = match Sniffer::devices() {
+    ///     Ok(devs) => devs,
+    ///     Err(e) => vec![]
+    /// };
+    /// 
+    /// // Try to start capturing with device having ID 1
+    /// if devices.len() > 1 {
+    ///     let dev = String::from(&devices[1].name);
+    ///     let sniffer = Sniffer::builder().device(dev).capture();
+    ///     assert!(sniffer.is_ok(), "Capture started successfully!");
+    /// }
     /// ```
     pub fn device(mut self, dev: String) -> SnifferBuilder {
         self.device = if dev.is_empty() { CaptureWrapper::default_device() } else { dev };
@@ -113,9 +130,9 @@ impl SnifferBuilder {
         self
     }
 
-    /// Creates a Sniffer, starts the capture, and returns a Result containing either
-    /// the Sniffer or a CustomError (in case something goes wrong while creating the
-    /// sniffer or starting the capture)
+    /// Builds the Sniffer as previously configured, starts the capture, and returns a
+    /// Result containing either the Sniffer or a CustomError (in case something goes
+    /// wrong while creating the sniffer or starting the capture)
     /// 
     /// #Examples
     /// ```
@@ -136,7 +153,9 @@ impl SnifferBuilder {
     /// 
     /// let mut sorting = Some(String::from("5L"));
     /// 
-    /// let mut sniffer = Sniffer::builder().sort(sorting).interval(10).capture();
+    /// let mut sniffer = Sniffer::builder().sort(sorting)
+    ///                                     .interval(10)
+    ///                                     .capture();
     /// assert!(sniffer.is_ok(), "Capture started successfully!");
     /// ```
     /// 
@@ -145,7 +164,9 @@ impl SnifferBuilder {
     /// 
     /// let mut device = String::from("fake_device");
     /// 
-    /// let sniffer = Sniffer::builder().device(device).interval(10).capture();
+    /// let sniffer = Sniffer::builder().device(device)
+    ///                                 .interval(10)
+    ///                                 .capture();
     /// assert!(sniffer.is_err(), "Device does not exist!");
     /// ```
     pub fn capture(self) -> Result<Sniffer, CustomError> {
@@ -168,11 +189,16 @@ impl SnifferBuilder {
         report.set_filter(filter);
         report.set_interval(self.interval);
 
-        for (i, d) in Sniffer::devices().iter().enumerate() {
-            if d.name == self.device {
-                report.set_device((i, String::from(&d.name)))
-            }
-        }
+        match Sniffer::devices() {
+            Ok(devs) => {
+                for (i, d) in devs.iter().enumerate() {
+                    if d.name == self.device {
+                        report.set_device((i, String::from(&d.name)))
+                    }
+                }
+            },
+            Err(e) => { return Err(CustomError::new(e.to_string())); }
+        };
 
         let mut sniffer = Sniffer {
             device: self.device,
@@ -200,6 +226,7 @@ impl SnifferBuilder {
     }
 }
 
+/// Handles traffic capture and report writing
 pub struct Sniffer {
     device: String,
     report: Arc<Mutex<TrafficReport>>,
@@ -209,8 +236,17 @@ pub struct Sniffer {
 }
 
 impl Sniffer {
-    /// Returns a SnifferBuilder, used to setup Sniffer's configuration
-    /// before actually building it
+    /// Returns a SnifferBuilder, used to setup Sniffer's configuration,
+    /// then build the Sniffer and start it capturing and reporting 
+    /// 
+    /// #Example
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// let mut sniffer = Sniffer::builder().interval(10)
+    ///                                     .capture();
+    /// assert!(sniffer.is_ok(), "Capture started successfully!");
+    /// ```
     pub fn builder() -> SnifferBuilder {
         SnifferBuilder {
             device: String::new(),
@@ -221,18 +257,22 @@ impl Sniffer {
         }
     }
 
-    pub fn devices() -> Vec<Device> {
+    /// Returns a Vec with all the devices available for
+    /// the capture
+    pub fn devices() -> Result<Vec<Device>, CustomError> {
         match Device::list() {
-            Ok(devices) => devices,
-            Err(_) => vec![]
+            Ok(devices) => Ok(devices),
+            Err(e) => Err(CustomError::new(e.to_string()))
         }
     }
 
-    pub fn printable_devices() -> Vec<String> {
+    /// Returns a Vec with the names of all the devices
+    /// available for the capture
+    pub fn printable_devices() -> Result<Vec<String>, CustomError> {
         match Device::list() {
-            Ok(devices) => devices.iter().enumerate()
-            .map(|d| parse_device(d.1, Some(d.0))).collect(),
-            Err(e) => vec![e.to_string()]
+            Ok(devices) => Ok(devices.iter().enumerate()
+                        .map(|d| parse_device(d.1, Some(d.0))).collect()),
+            Err(e) => Err(CustomError::new(e.to_string()))
         }
     }
 
@@ -322,18 +362,22 @@ impl Sniffer {
         Ok(())
     }
 
+    /// Returns the name of the device used for capture
     pub fn device(&self) -> String {
         String::from(&self.device)
     }
 
+    /// Resumes Sniffer (capturing and reporting)
     pub fn resume(&self) {
         self.state.set_state(State::Running);
     }
     
+    // Pauses Sniffer (capturing and reporting)
     pub fn pause(&self) {
         self.state.set_state(State::Pausing);
     }
 
+    // Stops Sniffer (capturing and reporting)
     pub fn stop(&self) {
         self.state.set_state(State::Stopped);
     }
