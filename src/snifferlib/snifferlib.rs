@@ -22,7 +22,7 @@ use report::{TrafficReport, DEFAULT_INTERVAL, DEFAULT_OUT};
 
 use core::time;
 use pcap::{Device, Error};
-use std::{sync::{Arc, Mutex}, thread, io::Error as IOError};
+use std::{sync::{Arc, Mutex}, thread::{self, JoinHandle}, io::Error as IOError, fmt};
 
 /// Builder used to configure, build and start a Sniffer
 pub struct SnifferBuilder {
@@ -131,7 +131,7 @@ impl SnifferBuilder {
     }
 
     /// Builds the Sniffer as previously configured, starts the capture, and returns a
-    /// Result containing either the Sniffer or a CustomError (in case something goes
+    /// Result containing either the Sniffer or a SnifferError (in case something goes
     /// wrong while creating the sniffer or starting the capture)
     /// 
     /// #Examples
@@ -169,7 +169,7 @@ impl SnifferBuilder {
     ///                                 .capture();
     /// assert!(sniffer.is_err(), "Device does not exist!");
     /// ```
-    pub fn capture(self) -> Result<Sniffer, CustomError> {
+    pub fn capture(self) -> Result<Sniffer, SnifferError> {
         let mut report =  match &self.out {
             Some(file_path) => TrafficReport::new(String::from(file_path)),
             None => TrafficReport::default()
@@ -178,7 +178,7 @@ impl SnifferBuilder {
         // Set sorting criteria for report
         if self.sorting.is_some() && report.set_sorting(self.sorting) == false {
             let msg = String::from("Invalid sorting criteria!");
-            return Err(CustomError::new(msg));
+            return Err(SnifferError::new(msg));
         }
 
         // Give to report details about capture configuration
@@ -197,7 +197,7 @@ impl SnifferBuilder {
                     }
                 }
             },
-            Err(e) => { return Err(CustomError::new(e.to_string())); }
+            Err(e) => { return Err(SnifferError::new(e.to_string())); }
         };
 
         let mut sniffer = Sniffer {
@@ -205,11 +205,13 @@ impl SnifferBuilder {
             interval: self.interval,
             filter: self.filter,
             report: Arc::new(Mutex::new(report)), 
-            state: Arc::new(StateHandler::new())
+            state: Arc::new(StateHandler::new()),
+            report_thread: None,
+            capture_thread: None
         };
 
         if let Err(e) = sniffer.start_capture() {
-            return Err(CustomError::new(e.to_string()));
+            return Err(SnifferError::new(e.to_string()));
         }
 
         if let Err(_) = sniffer.start_report() {
@@ -219,7 +221,7 @@ impl SnifferBuilder {
             };
             let message = format!("Something went wrong trying to write the report to{}. \
                 Please check that a valid path was specified and that you have write permissions for the target directory.", out);
-            return Err(CustomError::new(message)); 
+            return Err(SnifferError::new(message)); 
         }
         
         Ok(sniffer)
@@ -228,11 +230,13 @@ impl SnifferBuilder {
 
 /// Handles traffic capture and report writing
 pub struct Sniffer {
-    device: String,
-    report: Arc<Mutex<TrafficReport>>,
-    state: Arc<StateHandler>,
     interval: u64,
-    filter: Option<String>
+    device: String,
+    filter: Option<String>,
+    state: Arc<StateHandler>,
+    report: Arc<Mutex<TrafficReport>>,
+    report_thread: Option<JoinHandle<()>>,
+    capture_thread: Option<JoinHandle<()>>
 }
 
 impl Sniffer {
@@ -259,20 +263,20 @@ impl Sniffer {
 
     /// Returns a Vec with all the devices available for
     /// the capture
-    pub fn devices() -> Result<Vec<Device>, CustomError> {
+    pub fn devices() -> Result<Vec<Device>, SnifferError> {
         match Device::list() {
             Ok(devices) => Ok(devices),
-            Err(e) => Err(CustomError::new(e.to_string()))
+            Err(e) => Err(SnifferError::new(e.to_string()))
         }
     }
 
     /// Returns a Vec with the names of all the devices
     /// available for the capture
-    pub fn printable_devices() -> Result<Vec<String>, CustomError> {
+    pub fn printable_devices() -> Result<Vec<String>, SnifferError> {
         match Device::list() {
             Ok(devices) => Ok(devices.iter().enumerate()
                         .map(|d| parse_device(d.1, Some(d.0))).collect()),
-            Err(e) => Err(CustomError::new(e.to_string()))
+            Err(e) => Err(SnifferError::new(e.to_string()))
         }
     }
 
@@ -298,7 +302,7 @@ impl Sniffer {
         report_handler.set_filter(capture.filter());
         drop(report_handler);
 
-        thread::spawn(move || {
+        self.capture_thread = Some(thread::spawn(move || {
             loop {
                 match sh_capture.state() {
                     State::Running => match capture.start_capture() {
@@ -327,12 +331,12 @@ impl Sniffer {
                     }
                 }
             }
-        });
+        }));
 
         Ok(())
     }
 
-    fn start_report(&self) -> Result<(), IOError> {
+    fn start_report(&mut self) -> Result<(), IOError> {
         let sh_report = Arc::clone(&self.state);
         let rh_report = Arc::clone(&self.report);
         let interval = self.interval;
@@ -342,7 +346,7 @@ impl Sniffer {
             return res;
         }
         
-        thread::spawn(move || {
+        self.report_thread = Some(thread::spawn(move || {
             let duration = time::Duration::from_secs(interval);
     
             loop {
@@ -357,7 +361,7 @@ impl Sniffer {
 
                 thread::sleep(duration);
             }
-        });
+        }));
 
         Ok(())
     }
@@ -372,30 +376,56 @@ impl Sniffer {
         self.state.set_state(State::Running);
     }
     
-    // Pauses Sniffer (capturing and reporting)
+    /// Pauses Sniffer (capturing and reporting)
     pub fn pause(&self) {
         self.state.set_state(State::Pausing);
     }
 
-    // Stops Sniffer (capturing and reporting)
-    pub fn stop(&self) {
+    /// Stops Sniffer (capturing and reporting) and consumes it.
+    /// After stop, nothing else can be done with the Sniffer.
+    /// 
+    /// #Example
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// if let Ok(sniffer) = Sniffer::builder().interval(10)
+    ///                                        .capture() {
+    ///     // Stop the sniffer when you are done
+    ///     sniffer.stop();
+    /// 
+    ///     // Uncommenting the following line lets the borrow checker prevent compilation
+    ///     // sniffer.resume();
+    /// }
+    /// ```
+    pub fn stop(self) {
         self.state.set_state(State::Stopped);
+        
+        // wait for capture and report threads
+        if let Some(report_thread) = self.report_thread {
+            report_thread.join().ok();
+        }
+
+        if let Some(capture_thread) = self.capture_thread {
+            capture_thread.join().ok();
+        }
     }
 }
 
 #[derive(Debug)]
-pub struct CustomError {
+pub struct SnifferError {
     msg: String
 }
 
-impl CustomError {
+impl fmt::Display for SnifferError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({})", self.msg)
+    }
+}
+
+impl SnifferError {
     pub fn new(str: String) -> Self {
         Self {
             msg: str
         }
-    }
-
-    pub fn to_string(&self) -> String {
-        String::from(&self.msg)
     }
 }

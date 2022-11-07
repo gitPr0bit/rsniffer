@@ -41,7 +41,7 @@ fn main() {
                     println!("\n\r{}", d);
                 }
             },
-            Err(e) => eprintln!("{}", e.to_string())
+            Err(e) => eprintln!("{}", e)
         }
 
         cleanup_terminal();
@@ -55,7 +55,10 @@ fn main() {
         None => {
             let devices = match Sniffer::devices() {
                 Ok(devs) => devs,
-                Err(e) => { err_and_clean(e.to_string()); return; }
+                Err(e) => {
+                    err_and_clean(e.to_string()); 
+                    return; 
+                }
             };
 
             let dev = match args.id {
