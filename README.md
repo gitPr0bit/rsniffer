@@ -39,13 +39,16 @@ The application also takes care of properly indicating any failure of the sniffi
 When the sniffing process is active, a suitable indication is provided to the user.
 
 ## Screenshots
-![rsniffer running](screenshots/rsniffer_running.png?raw=true "rsniffer running")
-
+<p align="center">
+    <img alt="Running" src="./screenshots/rsniffer_running.png" width="90%">
+</p>
 <br>
 
-|                                                |                                                |
-|------------------------------------------------|------------------------------------------------|
-| ![](screenshots/rsniffer_paused.png?raw=true)  | ![](screenshots/rsniffer_stopped.png?raw=true) |
+<p align="center">
+    <img alt="Paused" src="./screenshots/rsniffer_paused.png" width="45%">
+&nbsp; &nbsp; &nbsp; &nbsp;
+    <img alt="Stopped" src="./screenshots/rsniffer_stopped.png" width="45%">
+</p>
 
 
 ## Installation
