@@ -26,7 +26,9 @@ fn main() {
     let args = Args::parse();
 
     setup_terminal();
-    print_help().ok();
+    
+    // Print app's greetings
+    println!("{}", GREETINGS);
 
     if args.list_devices {
         println!("\rAvailable devices:");
@@ -99,7 +101,9 @@ fn main() {
         }
     };
 
-    println!("\n\rUsing device {} for capture.\n", sniffer.device());
+    // Print device name and commands hints
+    println!("\n\n\rUsing device {} for capture.", sniffer.device());
+    print_help().ok();
 
     if let Err(e) = print_events(sniffer) {
         eprintln!("\n\rError: {:?}\r", e);
@@ -174,6 +178,7 @@ fn show_quitting() {
         let mut out = io::stdout();
 
         loop {
+            queue!(out, terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
             queue!(out, style::SetForegroundColor(style::Color::Magenta), cursor::MoveToColumn(1)).ok();
                 queue!(out, style::Print("Stopped. Quitting"), style::SetForegroundColor(style::Color::Magenta)).unwrap();
                 out.flush().ok();
@@ -226,10 +231,9 @@ fn print_events(sniffer: Sniffer) -> Result<()> {
 
 #[doc(hidden)]
 fn print_help() -> Result<()> {
-    println!("{}", GREETINGS);
     print!("\rHit {} to {}, ", "p".yellow(), "Pause".yellow());
     print!("{} to {}, ", "r".green(), "Resume".green());
-    println!("{} or {} to {}", "Esc".magenta(), "q".magenta(), "Quit".magenta());
+    println!("{} or {} to {}\n", "Esc".magenta(), "q".magenta(), "Quit".magenta());
 
     Ok(())
 }
