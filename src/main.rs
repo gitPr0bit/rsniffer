@@ -2,28 +2,24 @@ use core::time;
 use args::Args;
 use std::thread;
 use clap::Parser;
+use snifferlib::Sniffer;
 use std::io::{self, Write};
 use crossterm::style::Stylize;
 use std::sync::mpsc::{self, Sender, Receiver};
+
 use crossterm::{cursor, terminal, queue, style};
-use snifferlib::Sniffer;
+use crossterm::event::{read, Event, KeyCode};
+use crossterm::{execute, Result};
+
+use crate::args::GREETINGS;
 
 mod args;
 
-use crossterm::{
-    event::{
-        read, Event, KeyCode,
-    },
-    execute,
-    Result,
-};
-
-#[doc(hidden)]
-const HELP: &str = r#"
- - Hit "p" to pause;
- - Hit "r" to resume;
- - Hit Esc or "q" to quit;
-"#;
+enum AppState {
+    Running,
+    Paused,
+    Stopped
+}
 
 #[doc(hidden)]
 fn main() {
@@ -103,7 +99,7 @@ fn main() {
         }
     };
 
-    println!("\rUsing device {}", sniffer.device());
+    println!("\n\rUsing device {} for capture.\n", sniffer.device());
 
     if let Err(e) = print_events(sniffer) {
         eprintln!("\n\rError: {:?}\r", e);
@@ -114,14 +110,14 @@ fn main() {
 
 
 #[doc(hidden)]
-fn show_capture() -> Sender<bool> {
+fn show_capture() -> Sender<AppState> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let duration = time::Duration::from_millis(1000);
         let mut out = io::stdout();
         let mut show = true;
         'a:loop {
-            if pause(&rx) { 
+            if pause_or_stop(&rx) { 
                 break 'a; 
             }
 
@@ -131,7 +127,7 @@ fn show_capture() -> Sender<bool> {
 
             if show == true {
                 for _ in 0..3 {
-                    if pause(&rx) { 
+                    if pause_or_stop(&rx) { 
                         break 'a; 
                     }
                     thread::sleep(time::Duration::from_millis(300));
@@ -151,13 +147,20 @@ fn show_capture() -> Sender<bool> {
 }
 
 #[doc(hidden)]
-fn pause(rx: &Receiver<bool>) -> bool {
+fn pause_or_stop(rx: &Receiver<AppState>) -> bool {
     let mut out = io::stdout();
     match rx.try_recv() {
-        Ok(_) => {
+        Ok(state) => {
             queue!(out, terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
-            queue!(out, style::SetForegroundColor(style::Color::DarkYellow), cursor::MoveToColumn(1)).ok();
-            queue!(out, style::Print("Paused"), style::SetForegroundColor(style::Color::DarkYellow)).unwrap();
+            match state {
+                AppState::Paused => {
+                    queue!(out, style::SetForegroundColor(style::Color::DarkYellow), cursor::MoveToColumn(1)).ok();
+                    queue!(out, style::Print("Paused")).unwrap(); 
+                },
+                AppState::Stopped => { show_quitting(); },
+                _ => {}
+            }
+            
             out.flush().ok();
             true
         },
@@ -165,27 +168,55 @@ fn pause(rx: &Receiver<bool>) -> bool {
     }
 }
 
+fn show_quitting() {
+    thread::spawn(|| {
+        let duration = time::Duration::from_millis(1000);
+        let mut out = io::stdout();
+
+        loop {
+            queue!(out, style::SetForegroundColor(style::Color::Magenta), cursor::MoveToColumn(1)).ok();
+                queue!(out, style::Print("Stopped. Quitting"), style::SetForegroundColor(style::Color::Magenta)).unwrap();
+                out.flush().ok();
+    
+            for _ in 0..3 {
+                thread::sleep(time::Duration::from_millis(300));
+                execute!(out, style::Print("."), style::SetForegroundColor(style::Color::Magenta)).unwrap();
+            }
+            thread::sleep(duration / 2);
+        }
+    });
+}
+
 #[doc(hidden)]
 fn print_events(sniffer: Sniffer) -> Result<()> {
     let mut capturing = show_capture();
+    let mut app_state = AppState::Running;
 
     loop {
         // Blocking read
         let event = read()?;
 
         if event == Event::Key(KeyCode::Char('p').into()) {
+            app_state = AppState::Paused;
+
             sniffer.pause();
-            capturing.send(true).ok();
+            capturing.send(AppState::Paused).ok();
         }
 
         if event == Event::Key(KeyCode::Char('r').into()) {
+            app_state = AppState::Running;
+
             sniffer.resume();
             capturing = show_capture();
         }
 
         if event == Event::Key(KeyCode::Char('q').into()) || event == Event::Key(KeyCode::Esc.into()) {
+            match app_state {
+                AppState::Running => { capturing.send(AppState::Stopped).ok(); },
+                AppState::Paused | AppState::Stopped => { show_quitting(); }
+            }
+
             sniffer.stop();
-            capturing.send(true).ok();
             break;
         }
     }
@@ -195,11 +226,10 @@ fn print_events(sniffer: Sniffer) -> Result<()> {
 
 #[doc(hidden)]
 fn print_help() -> Result<()> {
-    let mut out = io::stdout();
-    for line in HELP.split(';') {
-        queue!(out, style::Print(line), cursor::MoveToNextLine(1))?;
-    }
-    out.flush()?;
+    println!("{}", GREETINGS);
+    print!("\rHit {} to {}, ", "p".yellow(), "Pause".yellow());
+    print!("{} to {}, ", "r".green(), "Resume".green());
+    println!("{} or {} to {}", "Esc".magenta(), "q".magenta(), "Quit".magenta());
 
     Ok(())
 }
@@ -224,7 +254,7 @@ fn cleanup_terminal() {
 
     terminal::disable_raw_mode().unwrap();
 
-    println!("\n\nExiting...\n");
+    println!("\n\nBye bye!\n");
     execute!(stdout, cursor::Show).unwrap();
 }
 

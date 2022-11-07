@@ -1,11 +1,9 @@
 use clap::Parser;
 
-/// 
-#[derive(Parser, Debug)]
-#[clap(name = "rsniffer",
-       version,
-       about = "\nWelcome to rsniffer!
-        \rThis tool sets the network adapter in promiscuous mode, captures TCP/UDP traffic and generates a textual report.\n
+pub const GREETINGS: &str = "
+        \rWelcome to rsniffer!
+        \rThis tool sets the network adapter in promiscuous mode, captures TCP/UDP traffic and generates a textual report.
+        \rYou can see all the available options launching it with -h or --help.\n
         \r                                        .:~~~~~~~^^^:..                                      
         \r                                     .^~^~!!!!!!!!!!~~~^:.                                  
         \r                                   .^~~^^^^^~~!!!!!~~~~~~^^:.                               
@@ -36,7 +34,13 @@ use clap::Parser;
         \r          .!?~           .~7?77777!^:...      ..:~!777777~:              !?:                
         \r            .!~            .^!77777777!:   .^!7777777!~^.               ^!.                 
         \r              .               :^~!!!~:       .::^^^:.                   .                   
-    ")]
+";
+
+/// 
+#[derive(Parser, Debug)]
+#[clap(name = "rsniffer",
+       version,
+       about = GREETINGS)]
 pub struct Args {
     /// Sets the capture device by name.
     #[arg(short, long)]
