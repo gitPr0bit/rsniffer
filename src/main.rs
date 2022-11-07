@@ -172,6 +172,7 @@ fn pause_or_stop(rx: &Receiver<AppState>) -> bool {
     }
 }
 
+#[doc(hidden)]
 fn show_quitting() {
     thread::spawn(|| {
         let duration = time::Duration::from_millis(1000);
