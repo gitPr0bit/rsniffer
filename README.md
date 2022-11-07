@@ -38,12 +38,15 @@ The application captures TCP/UDP traffic in promiscuous mode and generates a rep
 The application also takes care of properly indicating any failure of the sniffing process, providing meaningful and actionable feedback.
 When the sniffing process is active, a suitable indication is provided to the user.
 
-## Visuals
-![rsniffer running](screenshots/rsniffer_running?raw=true)
+## Screenshots
+![rsniffer running](screenshots/rsniffer_running.png?raw=true "rsniffer running")
 
-    rsniffer paused        |    rsniffer stopped
-:-------------------------:|:-------------------------:
-![](screenshots/rsniffer_paused?raw=true)  |  ![](screenshots/rsniffer_stopped?raw=true)
+<br>
+
+|                                                |                                                |
+|------------------------------------------------|------------------------------------------------|
+| ![](screenshots/rsniffer_paused.png?raw=true)  | ![](screenshots/rsniffer_stopped.png?raw=true) |
+
 
 ## Installation
 Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
