@@ -34,6 +34,7 @@ pub struct SnifferBuilder {
 
 impl SnifferBuilder {
     /// Sets the device name on the builder itself, and returns the builder by value.
+    /// If an empty String is given, relies on pcap to set default device for the capture.
     /// 
     /// #Example
     /// ```
@@ -53,7 +54,7 @@ impl SnifferBuilder {
     /// 
     /// #Example
     /// ```
-    /// use sniffer::Sniffer;
+    /// use snifferlib::Sniffer;
     /// 
     /// let mut builder = Sniffer::builder();
     /// builder = builder.interval(5);
@@ -67,7 +68,7 @@ impl SnifferBuilder {
     ///  
     /// #Example
     /// ```
-    /// use sniffer::Sniffer;
+    /// use snifferlib::Sniffer;
     /// 
     /// let mut file = Some(String::from("report.txt"));
     /// 
@@ -83,9 +84,9 @@ impl SnifferBuilder {
     ///  
     /// #Example
     /// ```
-    /// use sniffer::Sniffer;
+    /// use snifferlib::Sniffer;
     /// 
-    /// let mut file = Some(String::from("5L"));
+    /// let mut file = Some(String::from("tcp dst port 443"));
     /// 
     /// let mut builder = Sniffer::builder();
     /// builder = builder.out(file);
@@ -96,11 +97,57 @@ impl SnifferBuilder {
     }
 
     /// Sets the sorting criteria on the builder itself, and returns the builder by value.
+    ///  
+    /// #Example
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// let mut sorting = Some(String::from("5L"));
+    /// 
+    /// let mut builder = Sniffer::builder();
+    /// builder = builder.sort(sorting);
+    /// ```
+    /// 
     pub fn sort(mut self, sort: Option<String>) -> SnifferBuilder {
         self.sorting = sort;
         self
     }
 
+    /// Creates a Sniffer, starts the capture, and returns a Result containing either
+    /// the Sniffer or a CustomError (in case something goes wrong while creating the
+    /// sniffer or starting the capture)
+    /// 
+    /// #Examples
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// // Get a sniffer with default configuration
+    /// let mut sniffer = match Sniffer::builder().capture() {
+    ///     Ok(s) => s,
+    ///     Err(e) => { 
+    ///         eprintln!("Something went wrong... {}", e.to_string());
+    ///         return;
+    ///     }
+    /// };
+    /// ```
+    /// 
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// let mut sorting = Some(String::from("5L"));
+    /// 
+    /// let mut sniffer = Sniffer::builder().sort(sorting).interval(10).capture();
+    /// assert!(sniffer.is_ok(), "Capture started successfully!");
+    /// ```
+    /// 
+    /// ```
+    /// use snifferlib::Sniffer;
+    /// 
+    /// let mut device = String::from("fake_device");
+    /// 
+    /// let sniffer = Sniffer::builder().device(device).interval(10).capture();
+    /// assert!(sniffer.is_err(), "Device does not exist!");
+    /// ```
     pub fn capture(self) -> Result<Sniffer, CustomError> {
         let mut report =  match &self.out {
             Some(file_path) => TrafficReport::new(String::from(file_path)),
@@ -162,6 +209,8 @@ pub struct Sniffer {
 }
 
 impl Sniffer {
+    /// Returns a SnifferBuilder, used to setup Sniffer's configuration
+    /// before actually building it
     pub fn builder() -> SnifferBuilder {
         SnifferBuilder {
             device: String::new(),

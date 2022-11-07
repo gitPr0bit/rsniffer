@@ -41,6 +41,8 @@ fn main() {
         return;
     }
 
+    // First, look for a device name and, if missing, then look
+    // for a device ID
     let device = match &args.device {
         Some(name) => String::from(name),
         None => {
