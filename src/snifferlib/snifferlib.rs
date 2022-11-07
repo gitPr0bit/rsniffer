@@ -350,6 +350,8 @@ impl Sniffer {
             let duration = time::Duration::from_secs(interval);
     
             loop {
+                thread::sleep(duration);
+
                 match sh_report.state() {
                     State::Pausing | State::Paused => sh_report.set_state(State::Paused),
                     State::Stopped => break,
@@ -358,8 +360,6 @@ impl Sniffer {
     
                 let mut rh = rh_report.lock().unwrap();
                 rh.write().ok();
-
-                thread::sleep(duration);
             }
         }));
 
