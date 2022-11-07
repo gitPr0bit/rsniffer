@@ -2,13 +2,15 @@ use std::{collections::HashMap, fs::File, path::Path, io::Error, io::Write};
 use prettytable::{Table, format, row};
 use chrono::Local;
 
-/// bytes size for 1 kilobyte
+// bytes size for 1 kilobyte
 const KB: usize = 1_000;
 const _KB: usize = KB - 1; 
-/// bytes size for 1 megabyte
+
+// bytes size for 1 megabyte
 const MB: usize = 1_000_000;
 const _MB: usize = MB - 1;
-/// bytes size for 1 gigabyte
+
+// bytes size for 1 gigabyte
 const GB: usize = 1_000_000_000;
 const _GB: usize = GB - 1;
 

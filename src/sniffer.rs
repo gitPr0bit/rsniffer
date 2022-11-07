@@ -3,9 +3,16 @@
 //! to a file of choice. The library also gives the ability to pause, resume or stop
 //! the capture at any time.
 
+#[doc(hidden)]
 mod report;
+
+#[doc(hidden)]
 mod parser;
+
+#[doc(hidden)]
 mod capture;
+
+#[doc(hidden)]
 mod state_handler;
 
 use capture::CaptureWrapper;
@@ -26,25 +33,63 @@ pub struct SnifferBuilder {
 }
 
 impl SnifferBuilder {
-    /// Sets the device on the builder itself, and returns the builder by value.
+    /// Sets the device name on the builder itself, and returns the builder by value.
+    /// 
+    /// #Example
+    /// ```
+    /// use sniffer::Sniffer;
+    /// 
+    /// let mut device_name = Some(String::from("eth0"));
+    /// 
+    /// let mut builder = Sniffer::builder();
+    /// builder = builder.device(device_name);
+    /// ```
     pub fn device(mut self, dev: String) -> SnifferBuilder {
         self.device = if dev.is_empty() { CaptureWrapper::default_device() } else { dev };
         self
     }
 
     /// Sets the time interval on the builder itself, and returns the builder by value.
+    /// 
+    /// #Example
+    /// ```
+    /// use sniffer::Sniffer;
+    /// 
+    /// let mut builder = Sniffer::builder();
+    /// builder = builder.interval(5);
+    /// ```
     pub fn interval(mut self, interval: u64) -> SnifferBuilder {
         self.interval = interval;
         self
     }
 
-    /// Sets the output file on the builder itself, and returns the builder by value.
+    /// Sets the output file name on the builder itself, and returns the builder by value.
+    ///  
+    /// #Example
+    /// ```
+    /// use sniffer::Sniffer;
+    /// 
+    /// let mut file = Some(String::from("report.txt"));
+    /// 
+    /// let mut builder = Sniffer::builder();
+    /// builder = builder.out(file);
+    /// ```
     pub fn out(mut self, out_path: Option<String>) -> SnifferBuilder {
         self.out = out_path;
         self
     }
 
     /// Sets the filter on the builder itself, and returns the builder by value.
+    ///  
+    /// #Example
+    /// ```
+    /// use sniffer::Sniffer;
+    /// 
+    /// let mut file = Some(String::from("5L"));
+    /// 
+    /// let mut builder = Sniffer::builder();
+    /// builder = builder.out(file);
+    /// ```
     pub fn filter(mut self, filter: Option<String>) -> SnifferBuilder {
         self.filter = filter;
         self

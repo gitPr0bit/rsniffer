@@ -19,13 +19,14 @@ use crossterm::{
     Result,
 };
 
+#[doc(hidden)]
 const HELP: &str = r#"
  - Hit "p" to pause;
  - Hit "r" to resume;
  - Hit Esc or hit "q" to quit;
 "#;
 
-
+#[doc(hidden)]
 fn main() {
     let args = Args::parse();
 
@@ -98,7 +99,7 @@ fn main() {
 }
 
 
-
+#[doc(hidden)]
 fn show_capture() -> Sender<bool> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
@@ -135,6 +136,7 @@ fn show_capture() -> Sender<bool> {
     tx
 }
 
+#[doc(hidden)]
 fn pause(rx: &Receiver<bool>) -> bool {
     let mut out = io::stdout();
     match rx.try_recv() {
@@ -149,6 +151,7 @@ fn pause(rx: &Receiver<bool>) -> bool {
     }
 }
 
+#[doc(hidden)]
 fn print_events(sniffer: Sniffer) -> Result<()> {
     let mut capturing = show_capture();
 
@@ -176,6 +179,7 @@ fn print_events(sniffer: Sniffer) -> Result<()> {
     Ok(())
 }
 
+#[doc(hidden)]
 fn print_help() -> Result<()> {
     let mut out = io::stdout();
     for line in HELP.split(';') {
@@ -186,6 +190,7 @@ fn print_help() -> Result<()> {
     Ok(())
 }
 
+#[doc(hidden)]
 fn setup_terminal() {
 	let mut stdout = io::stdout();
 
@@ -196,6 +201,7 @@ fn setup_terminal() {
 	terminal::enable_raw_mode().unwrap();
 }
 
+#[doc(hidden)]
 fn cleanup_terminal() {
 	let mut stdout = io::stdout();
 
