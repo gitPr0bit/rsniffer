@@ -177,7 +177,7 @@ impl SnifferBuilder {
 
         // Set sorting criteria for report
         if self.sorting.is_some() && report.set_sorting(self.sorting) == false {
-            let msg = String::from("Invalid sorting criteria!");
+            let msg = String::from("Invalid sorting criteria.");
             return Err(SnifferError::new(msg));
         }
 
@@ -219,7 +219,7 @@ impl SnifferBuilder {
                 Some(out_file) => String::from(out_file),
                 None => format!(" {}", DEFAULT_OUT)
             };
-            let message = format!("Something went wrong trying to write the report to{}. \
+            let message = format!("Something went wrong trying to write the report to {}. \
                 Please check that a valid path was specified and that you have write permissions for the target directory.", out);
             return Err(SnifferError::new(message)); 
         }
@@ -418,7 +418,7 @@ pub struct SnifferError {
 
 impl fmt::Display for SnifferError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({})", self.msg)
+        write!(f, "{}", self.msg)
     }
 }
 

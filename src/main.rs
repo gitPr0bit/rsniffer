@@ -110,6 +110,7 @@ fn main() {
     }
 
     cleanup_terminal();
+    println!("\n\nBye bye!\n");
 }
 
 
@@ -258,13 +259,12 @@ fn cleanup_terminal() {
     stdout.flush().unwrap();
 
     terminal::disable_raw_mode().unwrap();
-
-    println!("\n\nBye bye!\n");
     execute!(stdout, cursor::Show).unwrap();
 }
 
 #[doc(hidden)]
 fn err_and_clean(err: String) {
-    eprintln!("\n\rAn error occurred: {}", err);
+    eprintln!("\n\r{}", "An error occurred!".red());
+    eprintln!("\r{}", err);
     cleanup_terminal();
 }

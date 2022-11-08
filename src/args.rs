@@ -73,7 +73,7 @@ pub struct Args {
 
     /// Sorts captured traffic accorting to specified criteria.
     /// The criteria must be specified as XY, where:
-    ///  - X is a number identifying the field (from 0 to 9)
+    ///  - X is a number identifying the field, from 0 (SRC_IP) to 8 (LAST TIMESTAMP)
     ///  - Y is 'G' (Greater to Lower) or 'L' (Lower to Greater)
     /// 
     /// Examples:
