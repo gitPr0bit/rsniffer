@@ -1,39 +1,39 @@
 use clap::Parser;
 
 pub const GREETINGS: &str = "
-        \rWelcome to rsniffer!
-        \rThis tool sets the network adapter in promiscuous mode, captures TCP/UDP traffic and generates a textual report.
-        \rYou can see all the available options launching it with -h or --help.\n
-        \r                                        .:~~~~~~~^^^:..                                      
-        \r                                     .^~^~!!!!!!!!!!~~~^:.                                  
-        \r                                   .^~~^^^^^~~!!!!!~~~~~~^^:.                               
-        \r                             ... .^~~~~^^^^^^^^^^^^~~~~^^^^^^:                              
-        \r                    .:^^~~~~~~~~~~~~~~~^^^^^^^:::::::::.......                              
-        \r                 .^~!!!!~~~~~~~~~~~~~~~^^^^^^^:::::::.........                              
-        \r                .~!!!!~~~~~~~~~!~~~~~~~^^^^^^^:::::::.........                              
-        \r                .!!!!!~~~~~~~~!!~~~~~~~^^^^^^^:::::::.........                              
-        \r                 :!!!!~~~~~~~~!!!!~~~~~^^^^^^^:::::::.........  ...                         
-        \r                  .~!~~~~~~~~~~~!!!!!~~^^^^^^^:::::::.........  .:....                      
-        \r             ^7!!~~!!!~~~~~~~~~~~~~~!!!!!~~^^^::::::..........  ........                    
-        \r             :??777777!!!~~~~~~~~~~^^^^~~!!!!!!~~^^:::......   ...........                  
-        \r         :::::JJ????77777!!!~~~~~~~~~^^^^^^^^^~~!!!!!!!!!~~~~~!~:...........                
-        \r        ^YYYYYYYJJ??????77777!!~~~~^^^^^^^^^^^^^:::^^^^^^^^^^^::.............               
-        \r         ~YYYYYYYYJJJ??????????77!!~~~^^^^^^^^^^^^::::::::::::::.............               
-        \r      ..:^JYYYYYYYYYJJJJJJ~.:^~~!?J?777!!~~^^^^^^:::::::::::::::..............              
-        \r     7JJJYJJJJJJJJJJJJJJJJ7     .#@&&?::!777!~...!7!~::::::::...........:^~?J?.             
-        \r     :7JJJJJJJJJJJJJJJJJJJJ7.    7GB5. :7?7777.  ^YP?.   :!!!!!!!!!!!77?JJJJ?:              
-        \r      .?JJJJJJJJJJJJJJJJJJJJJ~.      .~???????7^.      :!JJJJJJJJJJJJJJJJJJ?:               
-        \r    .~?JJJJJJJJJJJJJJJJJJJJJJJJ7!!!!7JJJJJJ??????7!!!!?JJJJJJJJJJJJJJJJJJJJJ?7^.            
-        \r  .~?JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ77JJJJJJJJJJJJJJJJJJJJJJJJJJ????????JJJJJJJJ?!^.         
-        \r.!?JJJJ?777??JJJJJJJJJJJJJJJJJJJJJJ?~:~!7?????????????????????????????J?!!777???JJ?:        
-        \r.?JJJJJ^ ^!!~^!?JJ????JJJJJ??????????!^...:::^!??????????JJJJ???????J?!:.~!^ !J?JJ~         
-        \r  ^?JJJ?: :~!: .~?J??7!7777??????????J??7!!77?JJ?????????7777!!77???7:  ^!: :??J?:          
-        \r    ^7JJ?^  :~:  :!???7^^!????????????J7!77!7????????????7~^~!????!:   ^~. .7JJ!.           
-        \r      ^7JJ!  .^^   :~7????????77!!!!~~~~:  .::::::^^~7????????7!^.    ^:   !J?:             
-        \r        :!J?:  .:    .:~!7????7~:                  .~7777??!^.       :.   !J!.              
-        \r          .!?~           .~7?77777!^:...      ..:~!777777~:              !?:                
-        \r            .!~            .^!77777777!:   .^!7777777!~^.               ^!.                 
-        \r              .               :^~!!!~:       .::^^^:.                   .                   
+    \rWelcome to rsniffer!
+    \rThis tool sets the network adapter in promiscuous mode, captures TCP/UDP traffic and generates a textual report.
+    \rYou can see all the available options launching it with -h or --help.\n
+    \r                                        .:~~~~~~~^^^:..                                      
+    \r                                     .^~^~!!!!!!!!!!~~~^:.                                  
+    \r                                   .^~~^^^^^~~!!!!!~~~~~~^^:.                               
+    \r                             ... .^~~~~^^^^^^^^^^^^~~~~^^^^^^:                              
+    \r                    .:^^~~~~~~~~~~~~~~~^^^^^^^:::::::::.......                              
+    \r                 .^~!!!!~~~~~~~~~~~~~~~^^^^^^^:::::::.........                              
+    \r                .~!!!!~~~~~~~~~!~~~~~~~^^^^^^^:::::::.........                              
+    \r                .!!!!!~~~~~~~~!!~~~~~~~^^^^^^^:::::::.........                              
+    \r                 :!!!!~~~~~~~~!!!!~~~~~^^^^^^^:::::::.........  ...                         
+    \r                  .~!~~~~~~~~~~~!!!!!~~^^^^^^^:::::::.........  .:....                      
+    \r             ^7!!~~!!!~~~~~~~~~~~~~~!!!!!~~^^^::::::..........  ........                    
+    \r             :??777777!!!~~~~~~~~~~^^^^~~!!!!!!~~^^:::......   ...........                  
+    \r         :::::JJ????77777!!!~~~~~~~~~^^^^^^^^^~~!!!!!!!!!~~~~~!~:...........                
+    \r        ^YYYYYYYJJ??????77777!!~~~~^^^^^^^^^^^^^:::^^^^^^^^^^^::.............               
+    \r         ~YYYYYYYYJJJ??????????77!!~~~^^^^^^^^^^^^::::::::::::::.............               
+    \r      ..:^JYYYYYYYYYJJJJJJ~.:^~~!?J?777!!~~^^^^^^:::::::::::::::..............              
+    \r     7JJJYJJJJJJJJJJJJJJJJ7     .#@&&?::!777!~...!7!~::::::::...........:^~?J?.             
+    \r     :7JJJJJJJJJJJJJJJJJJJJ7.    7GB5. :7?7777.  ^YP?.   :!!!!!!!!!!!77?JJJJ?:              
+    \r      .?JJJJJJJJJJJJJJJJJJJJJ~.      .~???????7^.      :!JJJJJJJJJJJJJJJJJJ?:               
+    \r    .~?JJJJJJJJJJJJJJJJJJJJJJJJ7!!!!7JJJJJJ??????7!!!!?JJJJJJJJJJJJJJJJJJJJJ?7^.            
+    \r  .~?JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ77JJJJJJJJJJJJJJJJJJJJJJJJJJ????????JJJJJJJJ?!^.         
+    \r.!?JJJJ?777??JJJJJJJJJJJJJJJJJJJJJJ?~:~!7?????????????????????????????J?!!777???JJ?:        
+    \r.?JJJJJ^ ^!!~^!?JJ????JJJJJ??????????!^...:::^!??????????JJJJ???????J?!:.~!^ !J?JJ~         
+    \r  ^?JJJ?: :~!: .~?J??7!7777??????????J??7!!77?JJ?????????7777!!77???7:  ^!: :??J?:          
+    \r    ^7JJ?^  :~:  :!???7^^!????????????J7!77!7????????????7~^~!????!:   ^~. .7JJ!.           
+    \r      ^7JJ!  .^^   :~7????????77!!!!~~~~:  .::::::^^~7????????7!^.    ^:   !J?:             
+    \r        :!J?:  .:    .:~!7????7~:                  .~7777??!^.       :.   !J!.              
+    \r          .!?~           .~7?77777!^:...      ..:~!777777~:              !?:                
+    \r            .!~            .^!77777777!:   .^!7777777!~^.               ^!.                 
+    \r              .               :^~!!!~:       .::^^^:.                   .                   
 ";
 
 /// 
@@ -78,7 +78,7 @@ pub struct Args {
     /// 
     /// Examples:
     ///     rsniffer -s 6G      sorting by number of packets, greater to lower
-    ///     rsniffer -s 9G      sorting by last timestamp, greater to lower
+    ///     rsniffer -s 8G      sorting by last timestamp, greater to lower
     ///     rsniffer -s 0L      sorting by source ip, lower to greater
     #[arg(short, long, verbatim_doc_comment)]
     pub sort: Option<String>,
