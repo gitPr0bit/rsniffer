@@ -51,5 +51,15 @@ When the sniffing process is active, a suitable indication is provided to the us
 </p>
 
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## How to run rsniffer
+An easy way to run it compiling from source is:<br><br> 
+```cargo run --release -- [OPTIONS]```<br><br>
+Some examples:<br>
+|           example                                              |                   outcome                   |
+|----------------------------------------------------------------|---------------------------------------------|
+| ```cargo run --release -- --help```                            | shows how to use rsniffer                   |
+| ```cargo run --release -- --list```                            | lists available devices for the capture     |
+| ```cargo run --release -- -i 2 -s 6G -f "tcp src port 443"```  | - captures traffic using device with ID = 2<br>- sorts it by amount of transmitted Bytes (in descending order)<br>-  keeps only tcp packets with source port 443  |
+| ```cargo run --release -- -o report.txt -t 1```                | - writes report to report.txt<br>- sets time interval to 1 sec             |
+
+An alternative is building rsniffer with `cargo build` and then directly launching the executable placed in `target/debug/` .

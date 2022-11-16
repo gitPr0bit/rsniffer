@@ -25,7 +25,7 @@ fn parse_timestamp(packet: &pcap::Packet, res: &mut TrafficDetail) {
     let ts = packet.header.ts.tv_sec;
     
     // Here choice has been made to use Local time rather than UTC (replace with Utc.from_...(...) to get UTC)
-    let dt = Local.from_utc_datetime(&NaiveDateTime::from_timestamp(ts.into(), 0));
+    let dt = Local.from_utc_datetime(&NaiveDateTime::from_timestamp_opt(ts.into(), 0).unwrap_or_default());
 
     let parsed = dt.format("%Y-%m-%d %H:%M:%S").to_string();
     res.first_ts = String::from(&parsed);
